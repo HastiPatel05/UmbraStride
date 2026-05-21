@@ -1,0 +1,33 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATA_DIR=/data
+      - SHADE_WORKER_URL=http://shade-worker:3001
+    volumes:
+      - ./data:/data
+    depends_on:
+      - shade-worker
+
+  shade-worker:
+    build:
+      context: .
+      dockerfile: services/shade-worker/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - SHADEMAP_API_KEY=${SHADEMAP_API_KEY}
+      - MAPBOX_ACCESS_TOKEN=${MAPBOX_ACCESS_TOKEN}
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - api

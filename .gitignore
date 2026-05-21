@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+dist/
+build/
+
+# Environment & secrets
+.env
+.env.local
+
+# Runtime data
+cache/
+data/raw/
+data/graphs/
+data/shade-cache/
+*.sqlite
+*.db
+
+# IDE
+.cursor/
+.idea/
+.vscode/
+*.swp
+
+# Build outputs
+*.tsbuildinfo
+apps/web/dist/
+services/shade-worker/dist/
+packages/shade-engine/dist/
+
+# Playwright
+playwright-report/
+test-results/
+
+# OS
+.DS_Store
+Thumbs.db

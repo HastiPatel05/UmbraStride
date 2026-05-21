@@ -1,0 +1,21 @@
+[project]
+name = "umbrastride"
+version = "0.1.0"
+description = "Shadow-oriented pedestrian navigation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["packages/geo-core", "packages/routing-core", "services/api"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages/geo-core/tests", "packages/routing-core/tests", "services/api/tests"]
+pythonpath = ["packages/geo-core/src", "packages/routing-core/src", "services/api/src"]

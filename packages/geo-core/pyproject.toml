@@ -1,0 +1,26 @@
+[project]
+name = "umbrastride-geo-core"
+version = "0.1.0"
+description = "OSM pedestrian graph ingest for UmbraStride"
+requires-python = ">=3.11"
+dependencies = [
+    "geopandas>=0.14",
+    "networkx>=3.2",
+    "osmnx>=1.9",
+    "shapely>=2.0",
+    "pyproj>=3.6",
+    "scikit-learn>=1.4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.4"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

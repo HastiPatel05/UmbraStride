@@ -1,0 +1,14 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "action": "exclude_way",
+        "osmid": "123456789",
+        "comment": "Example: exclude a closed footway by OSM way id"
+      },
+      "geometry": { "type": "Point", "coordinates": [11.58, 48.137] }
+    }
+  ]
+}
