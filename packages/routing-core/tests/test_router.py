@@ -1,4 +1,4 @@
-from umbrastride_routing.router import edge_weight
+from umbrastride_routing.weights import edge_weight
 
 
 def test_edge_weight_alpha_one_is_length():

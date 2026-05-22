@@ -42,6 +42,18 @@ class ShadeStore:
             )
             conn.commit()
 
+    def load_bucket(self, ts_bucket: str) -> dict[str, float]:
+        """Load all shade fractions for a time bucket in one query."""
+        with sqlite3.connect(self.path) as conn:
+            rows = conn.execute(
+                """
+                SELECT edge_key, shade_fraction FROM edge_shade
+                WHERE aoi_id = ? AND ts_bucket = ?
+                """,
+                (self.aoi_id, ts_bucket),
+            ).fetchall()
+        return {ek: float(sf) for ek, sf in rows}
+
     def get_fraction(self, edge_key: str, ts_bucket: str, default: float = 0.5) -> float:
         with sqlite3.connect(self.path) as conn:
             row = conn.execute(

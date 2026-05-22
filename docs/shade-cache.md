@@ -33,6 +33,25 @@ CREATE TABLE edge_shade (
 );
 ```
 
+## Routing performance
+
+The API caches in memory (per process):
+
+- OSM **GraphML** (reload only when the file changes)
+- **Shade SQLite** rows for the requested time bucket (one bulk query, not per edge)
+- **Routing DiGraph** with weights for α = 0, 1, and your custom α
+
+Optional env vars (see `.env.example`):
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `ROUTING_DIJKSTRA_WORKERS` | `3` | Parallel Dijkstra for shortest / coolest / custom |
+| `ROUTING_LOCAL_MARGIN_DEG` | `0.012` | Crop graph around O/D before search (~1.3 km) |
+
+After the first request for an AOI + time bucket, typical route requests are **under ~0.5 s** on `az-phoenix-core`. The first request still pays GraphML load + graph build (~5 s).
+
+Restart the API after changing routing code: `uvicorn umbrastride_api.main:app --reload`
+
 ## Mock mode
 
 `scripts/seed_demo_cache.py` writes synthetic shade (higher on north-south streets) so routing works without ShadeMap credentials.
