@@ -15,67 +15,77 @@ UmbraStride builds a walkable street graph from OpenStreetMap, estimates edge sh
 
 ## Quick start
 
+**Full setup for Linux, macOS, and Windows:** [docs/setup.md](docs/setup.md)
+
 ### Prerequisites
 
 - Python 3.11+
 - Node.js 20+
 - ShadeMap API key ([get one](https://shademap.app/about/))
 
-### Setup
+### Setup (Linux / macOS)
 
 ```bash
 cp .env.example .env
-# Edit .env — set SHADEMAP_API_KEY (and optionally MAPBOX_ACCESS_TOKEN)
+cp apps/web/.env.example apps/web/.env
+# Edit .env — SHADEMAP_API_KEY, DEFAULT_AOI_ID=az-phoenix-core
 
-# Python packages
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e "packages/geo-core[dev]" -e "packages/routing-core[dev]" -e "services/api[dev]"
-
-# Node packages
 npm install
 
-# Bootstrap Arizona (Phoenix metro by default)
-python scripts/bootstrap_arizona.py --preset az-phoenix
-
-# Or all Arizona metros + shade cache
-./scripts/seed_arizona.sh
-
-# Seed mock shade cache for one metro
-python scripts/seed_demo_cache.py --aoi az-phoenix
+python scripts/bootstrap_arizona.py --preset az-phoenix-core
+python scripts/seed_demo_cache.py --aoi az-phoenix-core
 ```
 
-### Run
+### Setup (Windows — PowerShell)
+
+```powershell
+Copy-Item .env.example .env
+Copy-Item apps\web\.env.example apps\web\.env
+
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e "packages/geo-core[dev]" -e "packages/routing-core[dev]" -e "services/api[dev]"
+npm install
+
+python scripts/bootstrap_arizona.py --preset az-phoenix-core
+python scripts/seed_demo_cache.py --aoi az-phoenix-core
+# Or: .\scripts\seed_arizona.ps1 -Preset az-phoenix-core
+```
+
+### Run (all platforms)
+
+**Terminal 1 — API** (activate venv first on Windows: `.\.venv\Scripts\Activate.ps1`)
 
 ```bash
-# Terminal 1 — API
-source .venv/bin/activate
-uvicorn umbrastride_api.main:app --reload --port 8000
+uvicorn umbrastride_api.main:app --reload --host 127.0.0.1 --port 8000
+```
 
-# Terminal 2 — Web
+**Terminal 2 — Web**
+
+```bash
 npm run dev:web
+```
 
-# Optional — shade worker (real ShadeMap profiling)
+**Terminal 3 — Shade worker (optional)**
+
+```bash
 npm run dev:worker
 ```
 
-Open http://localhost:5173 — pick origin/destination on the map, set datetime and alpha, then **Find routes**.
+Open **http://localhost:5173** — select **Phoenix downtown (fast)**, set origin/destination on the map, then **Find routes**.
 
-### 2.5D building shadows on the map (like shademap.app)
+### 2.5D building shadows
 
-```bash
-cp apps/web/.env.example apps/web/.env
-# Set VITE_SHADEMAP_API_KEY from https://shademap.app/about/
-npm run dev:web
-```
+Set `VITE_SHADEMAP_API_KEY` in `apps/web/.env` (Windows: `apps\web\.env`), restart the web dev server, zoom to **15+**.
 
-At zoom **15+**, the map loads OSM building footprints (Overpass) with heights and renders ShadeMap shadows for the selected date/time. Optional `VITE_MAPBOX_ACCESS_TOKEN` improves building heights where Mapbox data is available.
-
-### Precompute shade (requires SHADEMAP_API_KEY + worker)
+### Precompute shade (optional)
 
 ```bash
 npm run dev:worker
-python scripts/precompute_shade.py --aoi az-phoenix --hours 10,11,12,13,14
+python scripts/precompute_shade.py --aoi az-phoenix-core --hours 10,11,12,13,14
 ```
 
 ## Environment variables
@@ -84,6 +94,7 @@ See [.env.example](.env.example).
 
 ## Documentation
 
+- **[Setup & run (Linux + Windows)](docs/setup.md)**
 - [Paper mapping](docs/paper-mapping.md)
 - [Arizona coverage](docs/arizona.md)
 - [Shade cache](docs/shade-cache.md)

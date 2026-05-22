@@ -15,29 +15,38 @@ Manifest: [`data/regions/arizona.json`](../data/regions/arizona.json)
 
 ## Bootstrap
 
+**Linux / macOS**
+
 ```bash
-# Default metro (Phoenix)
-python scripts/bootstrap_arizona.py
-
-# One metro
-python scripts/bootstrap_arizona.py --preset az-phoenix
-
-# All metros
+python scripts/bootstrap_arizona.py --preset az-phoenix-core   # recommended
 python scripts/bootstrap_arizona.py --preset all
-
-# List metros / tiles
 python scripts/bootstrap_arizona.py --list-presets
 python scripts/bootstrap_arizona.py --list-tiles
-
-# Single grid tile
 python scripts/bootstrap_arizona.py --tile az-tile--112.00_33.25
+```
+
+**Windows (PowerShell)** — activate `.venv` first
+
+```powershell
+python scripts/bootstrap_arizona.py --preset az-phoenix-core
+python scripts/bootstrap_arizona.py --list-presets
 ```
 
 ## Shade cache
 
+**Linux / macOS**
+
 ```bash
-./scripts/seed_arizona.sh          # all metros + synthetic cache
-python scripts/seed_demo_cache.py --aoi az-phoenix
+./scripts/seed_arizona.sh
+python scripts/seed_demo_cache.py --aoi az-phoenix-core
+```
+
+**Windows (PowerShell)**
+
+```powershell
+.\scripts\seed_arizona.ps1 -Preset az-phoenix-core
+.\scripts\seed_arizona.ps1 -AllMetros
+python scripts/seed_demo_cache.py --aoi az-phoenix-core
 ```
 
 ## API

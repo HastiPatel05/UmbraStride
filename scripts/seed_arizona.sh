@@ -16,4 +16,4 @@ for preset in az-phoenix-core az-phoenix az-tucson az-flagstaff az-prescott az-y
   fi
 done
 
-echo "Done. Default AOI: az-phoenix. Start API + web."
+echo "Done. Default AOI: az-phoenix-core. Start API + web (see docs/setup.md)."
