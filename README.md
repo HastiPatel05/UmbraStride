@@ -1,63 +1,87 @@
 # UmbraStride
 
-Shadow-oriented pedestrian navigation inspired by [*Walking in the Shade: Shadow-oriented Navigation for Pedestrians*](https://doi.org/10.1145/3678717.3691287) (Feng et al., SIGSPATIAL 2024).
+**Walk in more shade when you want to** — shadow-oriented pedestrian routing for Arizona, inspired by [*Walking in the Shade*](https://doi.org/10.1145/3678717.3691287) (Feng et al., SIGSPATIAL 2024).
 
-UmbraStride builds a walkable street graph from OpenStreetMap, estimates edge shade using [ShadeMap](https://shademap.app/about/), and routes with Dijkstra while balancing **cooler (shadier)** vs **shorter** paths via a preference slider.
+UmbraStride builds walkable street networks from [OpenStreetMap](https://www.openstreetmap.org/), estimates how shady each street is at a chosen time, and finds routes that balance **staying cool (shadier)** vs **walking less (shorter)**. You use a map in the browser: click start and end, move a slider, get up to three colored paths.
 
-## Architecture
+---
 
-- **geo-core** — OSMnx pedestrian graphs, GraphML export, GeoJSON overrides
-- **routing-core** — Alpha-weighted Dijkstra, route metrics
-- **shade-engine** — Edge point sampling, cache keys, SQLite schema
-- **shade-worker** — Headless ShadeMap batch profiling (Playwright)
-- **api** — FastAPI REST (`/v1/route`, `/v1/graph`, `/v1/cache/warm`)
-- **web** — React + MapLibre + ShadeMap overlay
+## Who is this for?
 
-## Quick start
+| You are… | Start here |
+|-----------|------------|
+| **Using the map** (no coding) | [docs/user-guide.md](docs/user-guide.md) after someone installs it for you |
+| **Installing on your laptop** | [docs/setup.md](docs/setup.md) |
+| **Fixing errors** | [docs/troubleshooting.md](docs/troubleshooting.md) |
+| **Developing / integrating** | [docs/architecture.md](docs/architecture.md) + [docs/api.md](docs/api.md) |
+| **Unsure of a term** | [docs/glossary.md](docs/glossary.md) |
 
-**Full setup for Linux, macOS, and Windows:** [docs/setup.md](docs/setup.md)
+**Full documentation index:** [docs/README.md](docs/README.md)
 
-### Prerequisites
+---
 
-- Python 3.11+
-- Node.js 20+
-- ShadeMap API key ([get one](https://shademap.app/about/))
+## What you get in the app
 
-### Setup (Linux / macOS)
+- **Shortest route** (orange) — fewest meters; shade ignored.
+- **Coolest route** (teal) — prefers shadier street segments; may be longer.
+- **Your route** (purple) — based on the **shade ↔ short** slider.
+- **3D buildings** on the map ([OpenFreeMap](https://openfreemap.org/) + [MapLibre 3D example](https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/)).
+- **Live building shadows** (optional) with a [ShadeMap](https://shademap.app/about/) API key.
+- **Automatic area selection** — no city dropdown; the app picks the right Arizona metro from where you click.
+
+**Default coverage:** [Phoenix metro (wide)](docs/arizona.md) — `az-phoenix` (Phoenix, Tempe, Scottsdale). Smaller downtown-only graph available as `az-phoenix-core`.
+
+---
+
+## How it works (short version)
+
+```mermaid
+flowchart LR
+  A[You click origin + destination] --> B[App picks Arizona metro AOI]
+  B --> C[Load streets + shade cache]
+  C --> D[Three weighted shortest paths]
+  D --> E[Draw routes on map]
+```
+
+Shade data comes from a **prepared database** on disk (demo synthetic data works for testing). See [Shade cache](docs/shade-cache.md).
+
+---
+
+## Quick start (technical)
+
+**Prerequisites:** Python 3.11+, Node.js 20+, ~2 GB disk for Phoenix metro data.  
+**Full steps (Linux, macOS, Windows):** [docs/setup.md](docs/setup.md)
+
+### 1. Clone and configure
 
 ```bash
+git clone https://github.com/HastiPatel05/UmbraStride.git
+cd UmbraStride
 cp .env.example .env
 cp apps/web/.env.example apps/web/.env
-# Edit .env — SHADEMAP_API_KEY, DEFAULT_AOI_ID=az-phoenix-core
-
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e "packages/geo-core[dev]" -e "packages/routing-core[dev]" -e "services/api[dev]"
-npm install
-
-python scripts/bootstrap_arizona.py --preset az-phoenix-core
-python scripts/seed_demo_cache.py --aoi az-phoenix-core
+# Optional: add ShadeMap keys — https://shademap.app/about/
 ```
 
-### Setup (Windows — PowerShell)
+### 2. Install dependencies
 
-```powershell
-Copy-Item .env.example .env
-Copy-Item apps\web\.env.example apps\web\.env
-
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+```bash
+python3 -m venv .venv && source .venv/bin/activate
 pip install -e "packages/geo-core[dev]" -e "packages/routing-core[dev]" -e "services/api[dev]"
 npm install
-
-python scripts/bootstrap_arizona.py --preset az-phoenix-core
-python scripts/seed_demo_cache.py --aoi az-phoenix-core
-# Or: .\scripts\seed_arizona.ps1 -Preset az-phoenix-core
 ```
 
-### Run (all platforms)
+Windows: use `.\.venv\Scripts\Activate.ps1` — see [setup](docs/setup.md).
 
-**Terminal 1 — API** (activate venv first on Windows: `.\.venv\Scripts\Activate.ps1`)
+### 3. Download streets + shade (Phoenix metro)
+
+```bash
+python scripts/bootstrap_arizona.py --preset az-phoenix
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14
+```
+
+### 4. Run
+
+**Terminal 1 — API**
 
 ```bash
 uvicorn umbrastride_api.main:app --reload --host 127.0.0.1 --port 8000
@@ -69,43 +93,78 @@ uvicorn umbrastride_api.main:app --reload --host 127.0.0.1 --port 8000
 npm run dev:web
 ```
 
-**Terminal 3 — Shade worker (optional)**
+Open **http://localhost:5173** — set origin/destination on the map, then **Find routes**.  
+**User walkthrough:** [docs/user-guide.md](docs/user-guide.md)
 
-```bash
-npm run dev:worker
-```
+---
 
-Open **http://localhost:5173** — select **Phoenix downtown (fast)**, set origin/destination on the map, then **Find routes**.
+## Project structure
 
-### 2.5D building shadows
+| Path | Role |
+|------|------|
+| `apps/web` | React + MapLibre UI |
+| `services/api` | FastAPI (`/v1/route`, regions, graphs) |
+| `services/shade-worker` | Optional ShadeMap batch profiling |
+| `packages/geo-core` | OSM graph download (OSMnx) |
+| `packages/routing-core` | Dijkstra + SQLite shade store |
+| `scripts/` | `bootstrap_arizona.py`, `seed_demo_cache.py`, … |
+| `data/` | Graphs and cache (created by you) |
+| `docs/` | All documentation |
 
-Set `VITE_SHADEMAP_API_KEY` in `apps/web/.env` (Windows: `apps\web\.env`), restart the web dev server, zoom to **15+**.
-
-### Precompute shade (optional)
-
-```bash
-npm run dev:worker
-python scripts/precompute_shade.py --aoi az-phoenix-core --hours 10,11,12,13,14
-```
-
-## Environment variables
-
-See [.env.example](.env.example).
+---
 
 ## Documentation
 
-- **[Setup & run (Linux + Windows)](docs/setup.md)**
-- [Paper mapping](docs/paper-mapping.md)
-- [Arizona coverage](docs/arizona.md)
-- [Shade cache](docs/shade-cache.md)
-- [API](docs/api.md)
+| Document | Contents |
+|----------|----------|
+| [docs/README.md](docs/README.md) | **Documentation hub** — start here |
+| [docs/user-guide.md](docs/user-guide.md) | Using the map (non-technical friendly) |
+| [docs/setup.md](docs/setup.md) | Install, bootstrap, run (all platforms) |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Common problems and fixes |
+| [docs/glossary.md](docs/glossary.md) | Terms explained (AOI, alpha, shade, …) |
+| [docs/configuration.md](docs/configuration.md) | All `.env` variables |
+| [docs/arizona.md](docs/arizona.md) | Metro presets, Phoenix wide vs core |
+| [docs/shade-cache.md](docs/shade-cache.md) | Shade storage and performance |
+| [docs/api.md](docs/api.md) | HTTP API reference |
+| [docs/architecture.md](docs/architecture.md) | System design for developers |
+| [docs/paper-mapping.md](docs/paper-mapping.md) | Relation to SIGSPATIAL 2024 paper |
 
-## License
+---
 
-MIT — see [LICENSE](LICENSE).
+## Environment variables
 
-## Attribution
+Copy [.env.example](.env.example) and [apps/web/.env.example](apps/web/.env.example).  
+Explained in plain language: [docs/configuration.md](docs/configuration.md).
 
-- Research: Yu Feng et al., SIGSPATIAL 2024
-- Shadows: [ShadeMap](https://shademap.app/) / [mapbox-gl-shadow-simulator](https://www.npmjs.com/package/mapbox-gl-shadow-simulator)
-- Streets: [OpenStreetMap](https://www.openstreetmap.org/) via [OSMnx](https://osmnx.readthedocs.io/)
+**Minimum for demo routing:**
+
+```env
+# .env
+DATA_DIR=./data
+DEFAULT_AOI_ID=az-phoenix
+
+# apps/web/.env
+VITE_DEFAULT_AOI=az-phoenix
+```
+
+---
+
+## Scripts cheat sheet
+
+| Command | Purpose |
+|---------|---------|
+| `python scripts/bootstrap_arizona.py --preset az-phoenix` | Download walk streets for Phoenix metro |
+| `python scripts/seed_demo_cache.py --aoi az-phoenix` | Synthetic shade (no ShadeMap) |
+| `python scripts/bootstrap_arizona.py --list-presets` | List Arizona metros |
+| `npm run dev:web` | Web app :5173 |
+| `npm run dev:worker` | Shade worker :3001 (optional) |
+
+---
+
+## License and attribution
+
+- **Code:** MIT — see [LICENSE](LICENSE).
+- **Research idea:** Yu Feng et al., SIGSPATIAL 2024 — [doi.org/10.1145/3678717.3691287](https://doi.org/10.1145/3678717.3691287).
+- **Shadows:** [ShadeMap](https://shademap.app/) / [mapbox-gl-shadow-simulator](https://www.npmjs.com/package/mapbox-gl-shadow-simulator).
+- **Streets:** [OpenStreetMap](https://www.openstreetmap.org/) via [OSMnx](https://osmnx.readthedocs.io/).
+- **Basemap / 3D buildings:** [OpenFreeMap](https://openfreemap.org/).
