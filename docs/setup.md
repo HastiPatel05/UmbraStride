@@ -88,7 +88,7 @@ notepad apps\web\.env
 ```env
 DATA_DIR=./data
 DEFAULT_AOI_ID=az-phoenix
-SUN_AVERSION_BETA=2.0
+SUN_AVERSION_BETA=5.0
 SNAP_MAX_DIST_M=1200
 ```
 

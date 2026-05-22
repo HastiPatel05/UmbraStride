@@ -42,7 +42,7 @@ Copy from [`.env.example`](../.env.example).
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DEFAULT_AOI_ID` | `az-phoenix` | Fallback AOI when resolution fails. Should match a **bootstrapped** preset. |
-| `SUN_AVERSION_BETA` | `2.0` | How strongly sunny street length is penalized when α→0 (shade preference). Higher = stronger avoidance of sun. |
+| `SUN_AVERSION_BETA` | `5.0` | How strongly sunny street length is penalized when α→0 (shade preference). Higher = stronger avoidance of sun. |
 | `SNAP_MAX_DIST_M` | `1200` | Max distance (meters) to snap a click to the nearest walkable street node. |
 
 ### CPU parallelism (`0` = use all cores)
@@ -94,7 +94,7 @@ Copy from [`apps/web/.env.example`](../apps/web/.env.example).
 ```env
 DATA_DIR=./data
 DEFAULT_AOI_ID=az-phoenix
-SUN_AVERSION_BETA=2.0
+SUN_AVERSION_BETA=5.0
 ```
 
 **`apps/web/.env`:**

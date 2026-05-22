@@ -40,7 +40,7 @@ weight  = α × L + (1 - α) × (L_sun × β + L_shade)
 | Symbol | Meaning | Default in UmbraStride |
 |--------|---------|------------------------|
 | `α` | User preference | Slider 0–1; also fixed routes at 0 and 1 |
-| `β` | Sun aversion | `SUN_AVERSION_BETA=2` in `.env` |
+| `β` | Sun aversion | `SUN_AVERSION_BETA=5` in `.env` |
 | `S` | Shade fraction along edge | From SQLite cache or 0.5 default |
 
 **Shortest path:** `α = 1` → weight = `L`.  

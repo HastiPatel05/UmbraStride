@@ -98,7 +98,7 @@ Plain-language definitions for terms used in UmbraStride docs and the app.
 
 **Snap** — Moving your clicked point to the **nearest walkable street** node so routing can start. If you click too far from any street, you get an error.
 
-**Sun aversion (beta)** — Environment variable `SUN_AVERSION_BETA` (default **2**). Higher values make sunny street segments “cost” more when you prefer shade.
+**Sun aversion (beta)** — Environment variable `SUN_AVERSION_BETA` (default **5**). Higher values make sunny street segments “cost” more when you prefer shade.
 
 ---
 

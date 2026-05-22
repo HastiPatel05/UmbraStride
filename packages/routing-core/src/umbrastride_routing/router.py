@@ -55,13 +55,19 @@ def _path_geometry(G: nx.MultiDiGraph, path: list) -> dict[str, Any] | None:
     return None
 
 
-def _path_geometry_from_digraph(D: nx.DiGraph, path: list) -> dict[str, Any] | None:
+def _edge_route_payload(data: dict[str, Any], weight_attr: str) -> dict[str, Any]:
+    return data.get("route_payloads", {}).get(weight_attr, data)
+
+
+def _path_geometry_from_digraph(
+    D: nx.DiGraph, path: list, weight_attr: str
+) -> dict[str, Any] | None:
     lines = []
     for i in range(len(path) - 1):
         u, v = path[i], path[i + 1]
         if not D.has_edge(u, v):
             continue
-        data = D[u][v]
+        data = _edge_route_payload(D[u][v], weight_attr)
         if data.get("geometry") is not None:
             lines.append(data["geometry"])
         elif D.nodes[u].get("x") is not None:
@@ -84,14 +90,14 @@ def _path_geometry_from_digraph(D: nx.DiGraph, path: list) -> dict[str, Any] | N
     return None
 
 
-def _route_metrics_digraph(D: nx.DiGraph, path: list) -> dict:
+def _route_metrics_digraph(D: nx.DiGraph, path: list, weight_attr: str) -> dict:
     dist = 0.0
     shade_len = 0.0
     for i in range(len(path) - 1):
         u, v = path[i], path[i + 1]
         if not D.has_edge(u, v):
             continue
-        data = D[u][v]
+        data = _edge_route_payload(D[u][v], weight_attr)
         length = float(data.get("length_m", 0))
         sf = float(data.get("shade_fraction", 0.5))
         dist += length
@@ -161,8 +167,9 @@ def _build_route_result(
     ts_bucket: str,
     shortest_dist: float | None,
 ) -> tuple[dict, float | None]:
-    metrics = _route_metrics_digraph(D, path)
-    geom = _path_geometry_from_digraph(D, path)
+    weight_attr = _alpha_weight_key(a)
+    metrics = _route_metrics_digraph(D, path, weight_attr)
+    geom = _path_geometry_from_digraph(D, path, weight_attr)
     label = "custom"
     if a >= 0.999:
         label = "shortest"

@@ -114,6 +114,7 @@ export default function App() {
     setError(null);
     try {
       const result = await fetchRoute({
+        aoi_id: aoiId,
         origin: { lng: origin[0], lat: origin[1] },
         destination: { lng: destination[0], lat: destination[1] },
         datetime: datetimeIso,

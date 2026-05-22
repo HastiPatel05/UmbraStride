@@ -16,20 +16,22 @@ from umbrastride_routing.shade_store import ShadeStore, floor_ts_bucket
 
 
 def _synthetic_shade(lng: float, lat: float, hour: int, bearing_deg: float | None) -> float:
-    """Mock shade: sun from south; E-W streets get more shade at solar noon."""
+    """Mock shade with directional and corridor variation for visible demo routes."""
     sun_az = 180.0 + (hour - 12) * 15.0
     sun_rad = math.radians(sun_az)
-    base = 0.4 + 0.15 * math.cos(math.radians((hour - 12) * 20))
+    base = 0.28 + 0.10 * math.cos(math.radians((hour - 12) * 20))
 
     if bearing_deg is not None:
         seg = math.radians(bearing_deg)
-        # Alignment with sun: parallel segments catch more shade when sun is oblique
         align = abs(math.cos(seg - sun_rad))
-        street_factor = 0.35 * align
+        street_factor = 0.42 * align
     else:
-        street_factor = 0.15 * abs(math.sin(math.radians(lng * 1000 + lat * 1000)))
+        street_factor = 0.18 * abs(math.sin(math.radians(lng * 1000 + lat * 1000)))
 
-    return max(0.08, min(0.92, base + street_factor))
+    corridor = 0.22 * math.sin((lng + 112.08) * 9500 + hour * 0.7)
+    cross_street = 0.18 * math.cos((lat - 33.45) * 11000 - hour * 0.4)
+
+    return max(0.04, min(0.96, base + street_factor + corridor + cross_street))
 
 
 def _serialize_edges(G) -> list[tuple]:

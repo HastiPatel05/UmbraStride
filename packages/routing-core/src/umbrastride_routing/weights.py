@@ -10,7 +10,7 @@ def edge_weight(
     *,
     beta: float | None = None,
 ) -> float:
-    beta = beta if beta is not None else float(os.environ.get("SUN_AVERSION_BETA", "2.0"))
+    beta = beta if beta is not None else float(os.environ.get("SUN_AVERSION_BETA", "5.0"))
     alpha = max(0.0, min(1.0, alpha))
     l_sun = length_m * (1.0 - shade_fraction)
     l_shade = length_m * shade_fraction

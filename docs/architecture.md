@@ -103,7 +103,7 @@ L_shade = L * S
 weight  = α * L + (1 - α) * (L_sun * β + L_shade)
 ```
 
-`β` = `SUN_AVERSION_BETA` (default 2).  
+`β` = `SUN_AVERSION_BETA` (default 5).  
 Dijkstra minimizes sum of weights along paths.
 
 **Parallel edges** (same two intersections, multiple OSM ways) are collapsed to one directed edge per pair, keeping the **minimum** weight per α.

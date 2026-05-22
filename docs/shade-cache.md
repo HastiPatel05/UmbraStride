@@ -122,7 +122,7 @@ print('buckets', s.list_buckets()[:5])
 
 ## How shade affects routing weights
 
-For edge length `L`, shade `S`, preference `α`, sun penalty `β` (default 2):
+For edge length `L`, shade `S`, preference `α`, sun penalty `β` (default 5):
 
 ```
 L_sun   = L * (1 - S)
@@ -177,7 +177,7 @@ Restart API after changing routing code.
 | `ROUTING_LOCAL_MARGIN_DEG` | `0.012` | Subgraph crop margin |
 | `SHADE_SEED_WORKERS` | all cores | `seed_demo_cache.py` |
 | `PRECOMPUTE_WORKERS` | all cores | `precompute_shade.py` parallel HTTP |
-| `SUN_AVERSION_BETA` | `2.0` | Sun penalty strength |
+| `SUN_AVERSION_BETA` | `5.0` | Sun penalty strength |
 | `SHADE_WORKER_URL` | `http://127.0.0.1:3001` | Worker for warm/precompute |
 
 Full table: [Configuration](configuration.md).

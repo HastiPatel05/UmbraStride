@@ -6,6 +6,8 @@ import networkx as nx
 import numpy as np
 
 from umbrastride_geo.graph import edge_key, iter_edges
+
+
 def alpha_weight_key(alpha: float) -> str:
     return f"w_{round(alpha, 4)}"
 
@@ -13,7 +15,7 @@ def alpha_weight_key(alpha: float) -> str:
 def _beta() -> float:
     import os
 
-    return float(os.environ.get("SUN_AVERSION_BETA", "2.0"))
+    return float(os.environ.get("SUN_AVERSION_BETA", "5.0"))
 
 
 def _weight_matrix(lengths: np.ndarray, shade: np.ndarray, alphas: list[float]) -> dict[str, np.ndarray]:
@@ -56,19 +58,25 @@ def build_routing_digraph(
     w_by_key = _weight_matrix(lengths, shade, alphas)
 
     for i, (u, v, length, geom, ek, sf) in enumerate(rows):
-        payload: dict[str, Any] = {
+        route_payload: dict[str, Any] = {
             "length_m": length,
             "shade_fraction": sf,
             "edge_key": ek,
             "geometry": geom,
         }
+        payload: dict[str, Any] = {
+            **route_payload,
+            "route_payloads": {},
+        }
         for wk in wkeys:
             payload[wk] = float(w_by_key[wk][i])
+            payload["route_payloads"][wk] = route_payload
         if D.has_edge(u, v):
             cur = D[u][v]
             for wk in wkeys:
                 if payload[wk] < cur[wk]:
                     cur[wk] = payload[wk]
+                    cur.setdefault("route_payloads", {})[wk] = route_payload
             if geom is not None and cur.get("geometry") is None:
                 cur["geometry"] = geom
         else:
