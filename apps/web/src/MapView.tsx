@@ -50,11 +50,14 @@ export default function MapView({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    const shadeEnabled = Boolean(import.meta.env.VITE_SHADEMAP_API_KEY);
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: getInitialMapStyle(),
       center,
       zoom,
+      pitch: shadeEnabled ? 52 : 0,
+      bearing: shadeEnabled ? -24 : 0,
       minZoom: 8,
       maxZoom: 20,
     });

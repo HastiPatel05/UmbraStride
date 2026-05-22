@@ -2,9 +2,9 @@
  * Live 2.5D building shadows via ShadeMap (mapbox-gl-shadow-simulator).
  * Requires VITE_SHADEMAP_API_KEY — https://shademap.app/about/
  */
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type maplibregl from "maplibre-gl";
-import { fetchBuildingsForMap, SHADE_MIN_ZOOM } from "./buildings";
+import { fetchBuildingsForMap, SHADE_MIN_ZOOM, waitForMapLoaded } from "./buildings";
 
 type ShadeMapInstance = {
   addTo: (map: maplibregl.Map) => ShadeMapInstance;
@@ -25,10 +25,10 @@ const TERRAIN_SOURCE = {
   getSourceUrl: ({ x, y, z }: { x: number; y: number; z: number }) =>
     `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`,
   getElevation: ({ r, g, b }: { r: number; g: number; b: number }) =>
-    (r * 256 + g + b / 256) - 32768,
+    r * 256 + g + b / 256 - 32768,
 };
 
-export default function ShadeOverlay({ map, datetime, opacity = 0.5 }: Props) {
+export default function ShadeOverlay({ map, datetime, opacity = 0.55 }: Props) {
   const apiKey = import.meta.env.VITE_SHADEMAP_API_KEY;
   const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
@@ -43,6 +43,20 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.5 }: Props) {
   const [buildingCount, setBuildingCount] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const loadBuildings = useCallback(async () => {
+    if (!map || map.getZoom() < SHADE_MIN_ZOOM) return [];
+    try {
+      await waitForMapLoaded(map);
+      const features = await fetchBuildingsForMap(map, mapboxToken);
+      setBuildingCount(features.length);
+      return features;
+    } catch (e) {
+      console.warn("Building fetch failed:", e);
+      setBuildingCount(0);
+      return [];
+    }
+  }, [map, mapboxToken]);
+
   useEffect(() => {
     if (!map || !apiKey) {
       setStatus("off");
@@ -53,34 +67,21 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.5 }: Props) {
     setStatus("loading");
     setErrorMsg(null);
 
-    const getFeatures = async () => {
-      if (!map || map.getZoom() < SHADE_MIN_ZOOM) return [];
-      try {
-        const features = await fetchBuildingsForMap(map, mapboxToken);
-        if (!cancelled) setBuildingCount(features.length);
-        return features;
-      } catch (e) {
-        console.warn("Building fetch failed:", e);
-        if (!cancelled) setBuildingCount(0);
-        return [];
-      }
-    };
-
     const updateZoomState = () => {
       const ok = map.getZoom() >= SHADE_MIN_ZOOM;
       setZoomOk(ok);
       return ok;
     };
 
-    const refreshShadows = () => {
-      if (shadeRef.current && updateZoomState()) {
-        shadeRef.current.setDate(new Date(datetimeRef.current));
-      }
+    const refreshShadows = async () => {
+      if (!shadeRef.current || !updateZoomState()) return;
+      shadeRef.current.setDate(new Date(datetimeRef.current));
+      // Rebuild shadow mesh when the viewport changes (new building tiles).
+      await loadBuildings();
     };
 
     const onMapChange = () => {
-      updateZoomState();
-      refreshShadows();
+      void refreshShadows();
     };
 
     (async () => {
@@ -98,13 +99,17 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.5 }: Props) {
           color: "#0a1628",
           opacity,
           terrainSource: TERRAIN_SOURCE,
-          getFeatures,
+          getFeatures: async () => {
+            if (!map || map.getZoom() < SHADE_MIN_ZOOM) return [];
+            return loadBuildings();
+          },
         });
 
         shadeMap.addTo(map);
         shadeRef.current = shadeMap;
         setStatus("ready");
         updateZoomState();
+        await loadBuildings();
 
         map.on("moveend", onMapChange);
         map.on("zoomend", onMapChange);
@@ -123,7 +128,7 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.5 }: Props) {
       shadeRef.current?.remove();
       shadeRef.current = null;
     };
-  }, [map, apiKey, mapboxToken, opacity]);
+  }, [map, apiKey, mapboxToken, opacity, loadBuildings]);
 
   useEffect(() => {
     if (status !== "ready" || !shadeRef.current || !map) return;
@@ -148,12 +153,17 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.5 }: Props) {
       )}
       {status === "ready" && !zoomOk && (
         <div className="shade-banner shade-banner-warn">
-          Zoom in to level {SHADE_MIN_ZOOM}+ to see building shadows
+          Zoom in to level {SHADE_MIN_ZOOM}+ to see 3D buildings and shadows
         </div>
       )}
-      {status === "ready" && zoomOk && (
+      {status === "ready" && zoomOk && buildingCount === 0 && (
+        <div className="shade-banner shade-banner-warn">
+          Loading buildings… pan slightly or wait for tiles
+        </div>
+      )}
+      {status === "ready" && zoomOk && buildingCount > 0 && (
         <div className="shade-banner shade-banner-ok">
-          Shadows · {buildingCount} buildings · {new Date(datetime).toLocaleString()}
+          2.5D shadows · {buildingCount} buildings · {new Date(datetime).toLocaleString()}
         </div>
       )}
     </>

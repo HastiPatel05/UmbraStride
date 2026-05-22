@@ -43,7 +43,13 @@ export async function fetchRoute(params: {
   destination: LngLat;
   datetime: string;
   alpha: number;
-}): Promise<{ routes: RouteResult[]; ts_bucket: string; aoi_id?: string }> {
+}): Promise<{
+  routes: RouteResult[];
+  ts_bucket: string;
+  shade_ts_bucket?: string;
+  shade_cache_exact?: boolean;
+  aoi_id?: string;
+}> {
   const res = await fetch(`${API_BASE}/v1/route`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

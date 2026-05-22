@@ -2,6 +2,7 @@ import type maplibregl from "maplibre-gl";
 import osmtogeojson from "osmtogeojson";
 
 const MIN_ZOOM = 15;
+const SHADEMAP_BUILDING_MIN_ZOOM = 14;
 const DEFAULT_HEIGHT_M = 3;
 const LEVEL_HEIGHT_M = 3;
 
@@ -16,7 +17,10 @@ function parseHeightMeters(props: Record<string, unknown>): number {
     const n = parseFloat(h.replace(/m$/i, "").trim());
     if (!Number.isNaN(n)) return n;
   }
-  if (typeof h === "number") return h;
+  if (typeof h === "number") {
+    // ShadeMap vector tiles store decimeters
+    return h > 50 ? h / 10 : h;
+  }
 
   const render = props.render_height;
   if (typeof render === "number") return render;
@@ -50,6 +54,62 @@ function normalizeBuildingFeatures(features: GeoJSON.Feature[]): BuildingFeature
     });
   }
   return out;
+}
+
+/** Wait until MapLibre has loaded vector tiles (needed for querySourceFeatures). */
+export async function waitForMapLoaded(map: maplibregl.Map): Promise<void> {
+  if (map.loaded()) return;
+  await new Promise<void>((resolve) => {
+    const onRender = () => {
+      if (!map.loaded()) return;
+      map.off("render", onRender);
+      resolve();
+    };
+    map.on("render", onRender);
+    onRender();
+  });
+}
+
+/** ShadeMap building vector tiles (same source as shademap.app). */
+export async function fetchShadeMapBuildings(
+  map: maplibregl.Map
+): Promise<BuildingFeature[]> {
+  if (map.getZoom() < SHADEMAP_BUILDING_MIN_ZOOM) return [];
+  if (!map.getSource("buildings")) return [];
+
+  await waitForMapLoaded(map);
+
+  const raw = map.querySourceFeatures("buildings", { sourceLayer: "building" });
+  const features: GeoJSON.Feature[] = [];
+  const seen = new Set<string>();
+
+  for (const f of raw) {
+    if (!f.geometry || f.properties?.underground === "true") continue;
+    if (f.geometry.type !== "Polygon" && f.geometry.type !== "MultiPolygon") continue;
+    const id = String(f.id ?? f.properties?.id ?? features.length);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const props = { ...f.properties } as Record<string, unknown>;
+    if (!props.processed) {
+      const heightM = parseHeightMeters(props);
+      props.height = heightM;
+      props.render_height = heightM;
+      props.processed = true;
+    }
+    features.push({
+      type: "Feature",
+      geometry: f.geometry,
+      properties: props,
+    });
+  }
+
+  features.sort((a, b) => {
+    const ha = parseHeightMeters((a.properties ?? {}) as Record<string, unknown>);
+    const hb = parseHeightMeters((b.properties ?? {}) as Record<string, unknown>);
+    return ha - hb;
+  });
+
+  return normalizeBuildingFeatures(features);
 }
 
 /** Fetch OSM buildings in viewport via Overpass (free, global). */
@@ -88,10 +148,7 @@ export async function fetchMapboxBuildings(
 ): Promise<BuildingFeature[]> {
   if (map.getZoom() < MIN_ZOOM) return [];
 
-  await new Promise<void>((resolve) => {
-    if (map.isStyleLoaded()) resolve();
-    else map.once("idle", () => resolve());
-  });
+  await waitForMapLoaded(map);
 
   const features = map.querySourceFeatures("composite", {
     sourceLayer: "building",
@@ -118,7 +175,14 @@ export async function fetchBuildingsForMap(
   map: maplibregl.Map,
   mapboxToken?: string
 ): Promise<BuildingFeature[]> {
-  if (map.getZoom() < MIN_ZOOM) return [];
+  if (map.getZoom() < SHADEMAP_BUILDING_MIN_ZOOM && map.getZoom() < MIN_ZOOM) {
+    return [];
+  }
+
+  if (map.getSource("buildings")) {
+    const fromShade = await fetchShadeMapBuildings(map);
+    if (fromShade.length > 0) return fromShade;
+  }
 
   if (mapboxToken && map.getSource("composite")) {
     try {
@@ -129,7 +193,10 @@ export async function fetchBuildingsForMap(
     }
   }
 
-  return fetchOverpassBuildings(map);
+  if (map.getZoom() >= MIN_ZOOM) {
+    return fetchOverpassBuildings(map);
+  }
+  return [];
 }
 
-export const SHADE_MIN_ZOOM = MIN_ZOOM;
+export const SHADE_MIN_ZOOM = SHADEMAP_BUILDING_MIN_ZOOM;

@@ -5,6 +5,7 @@ description = "Alpha-weighted shade routing for UmbraStride"
 requires-python = ">=3.11"
 dependencies = [
     "networkx>=3.2",
+    "numpy>=1.26",
 ]
 
 [project.optional-dependencies]

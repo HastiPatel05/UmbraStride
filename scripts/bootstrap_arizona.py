@@ -4,9 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from umbrastride_geo.graph import bootstrap_aoi
+from umbrastride_routing.cpu import available_cores, worker_count
 from umbrastride_geo.regions import (
     bbox_to_str,
     estimate_tile_count,
@@ -14,6 +17,12 @@ from umbrastride_geo.regions import (
     iter_tile_bboxes,
     load_region,
 )
+
+
+def _bootstrap_one(item: tuple[str, str]) -> tuple[str, dict]:
+    aoi_id, bbox = item
+    meta = bootstrap_aoi(aoi_id, bbox, network_type="walk")
+    return aoi_id, meta
 
 
 def main() -> int:
@@ -34,6 +43,12 @@ def main() -> int:
         "--list-tiles",
         action="store_true",
         help="List grid tile ids (full state coverage) and exit",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=0,
+        help="parallel metros when --preset all (0 = min(cores, 4) for OSM politeness)",
     )
     args = parser.parse_args()
 
@@ -71,10 +86,24 @@ def main() -> int:
         targets = [(p["aoi_id"], p["bbox"])]
         print(f"No --preset/--tile given; bootstrapping default {default}")
 
-    for aoi_id, bbox in targets:
-        print(f"Bootstrapping {aoi_id} ...")
-        meta = bootstrap_aoi(aoi_id, bbox, network_type="walk")
-        print(f"  -> {meta['nodes']} nodes, {meta['edges']} edges")
+    if args.workers > 0:
+        os.environ["BOOTSTRAP_WORKERS"] = str(args.workers)
+
+    n_workers = worker_count("BOOTSTRAP_WORKERS", default=min(available_cores(), 4), minimum=1)
+    parallel = len(targets) > 1 and n_workers > 1
+
+    if parallel:
+        print(f"Bootstrapping {len(targets)} AOIs with {n_workers} workers ...")
+        with ProcessPoolExecutor(max_workers=min(n_workers, len(targets))) as pool:
+            futures = {pool.submit(_bootstrap_one, t): t[0] for t in targets}
+            for fut in as_completed(futures):
+                aoi_id, meta = fut.result()
+                print(f"  {aoi_id}: {meta['nodes']} nodes, {meta['edges']} edges")
+    else:
+        for aoi_id, bbox in targets:
+            print(f"Bootstrapping {aoi_id} ...")
+            meta = bootstrap_aoi(aoi_id, bbox, network_type="walk")
+            print(f"  -> {meta['nodes']} nodes, {meta['edges']} edges")
 
     if args.preset == "all":
         print(f"\nDone. {len(targets)} metro graphs. Full state grid has ~{estimate_tile_count(region)} tiles.")

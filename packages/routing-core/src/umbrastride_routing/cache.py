@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-import os
-import sqlite3
 import threading
 from functools import lru_cache
-from typing import Any
 
 import networkx as nx
 
 from umbrastride_geo.aoi import aoi_graph_path, resolve_data_dir
 from umbrastride_geo.graph import load_graph
 from umbrastride_routing.graph_build import build_routing_digraph
+from umbrastride_routing.shade_store import ShadeStore
 
 
 _graph_lock = threading.Lock()
@@ -34,23 +32,17 @@ def get_graph(aoi_id: str) -> nx.MultiDiGraph:
 
 
 @lru_cache(maxsize=32)
-def _shade_map_cached(aoi_id: str, ts_bucket: str, db_mtime: float) -> dict[str, float]:
-    path = resolve_data_dir() / "shade-cache" / f"{aoi_id}.sqlite"
-    if not path.exists():
-        return {}
+def _shade_map_cached(
+    aoi_id: str, ts_bucket: str, db_mtime: float
+) -> tuple[str, dict[str, float], bool]:
+    """Load shade map; may resolve to nearest cached bucket."""
     with _shade_lock:
-        with sqlite3.connect(path) as conn:
-            rows = conn.execute(
-                """
-                SELECT edge_key, shade_fraction FROM edge_shade
-                WHERE aoi_id = ? AND ts_bucket = ?
-                """,
-                (aoi_id, ts_bucket),
-            ).fetchall()
-    return {ek: float(sf) for ek, sf in rows}
+        store = ShadeStore(aoi_id)
+        return store.resolve_bucket(ts_bucket)
 
 
-def get_shade_map(aoi_id: str, ts_bucket: str) -> dict[str, float]:
+def get_shade_map(aoi_id: str, ts_bucket: str) -> tuple[str, dict[str, float], bool]:
+    """Return ``(resolved_bucket, shade_map, exact_match)``."""
     path = resolve_data_dir() / "shade-cache" / f"{aoi_id}.sqlite"
     mtime = path.stat().st_mtime if path.exists() else 0.0
     return _shade_map_cached(aoi_id, ts_bucket, mtime)
@@ -71,16 +63,20 @@ def get_routing_digraph(
 ) -> nx.DiGraph:
     """Cached collapsed DiGraph with precomputed weights for all requested alphas."""
     G = get_cached_graph(aoi_id, graph_mtime)
-    shade_map = _shade_map_cached(aoi_id, ts_bucket, db_mtime)
+    resolved_bucket, shade_map, _ = _shade_map_cached(aoi_id, ts_bucket, db_mtime)
     return build_routing_digraph(G, shade_map, list(alphas_key))
 
 
-def get_routing_graph_for_alphas(aoi_id: str, ts_bucket: str, alphas: list[float]) -> nx.DiGraph:
+def get_routing_graph_for_alphas(
+    aoi_id: str, ts_bucket: str, alphas: list[float]
+) -> tuple[nx.DiGraph, str, bool]:
+    """Return routing graph plus resolved shade bucket metadata."""
     gm = _graph_mtime(aoi_id)
     dm = _shade_db_mtime(aoi_id)
-    # Always include 0 and 1 so cache hits across requests
     merged = tuple(sorted({0.0, 1.0, *[round(a, 4) for a in alphas]}))
-    return get_routing_digraph(aoi_id, ts_bucket, gm, dm, merged)
+    resolved_bucket, _, exact = _shade_map_cached(aoi_id, ts_bucket, dm)
+    D = get_routing_digraph(aoi_id, ts_bucket, gm, dm, merged)
+    return D, resolved_bucket, exact
 
 
 def clear_caches() -> None:

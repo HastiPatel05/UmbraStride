@@ -8,9 +8,11 @@ import json
 import os
 import sys
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 
-from umbrastride_geo.graph import edge_key, graph_to_geojson, iter_edges, load_graph
+from umbrastride_geo.graph import edge_key, iter_edges, load_graph
+from umbrastride_routing.cpu import worker_count
 from umbrastride_routing.shade_store import ShadeStore, floor_ts_bucket
 
 
@@ -25,18 +27,28 @@ def _worker_profile(points: list[dict], dt_iso: str) -> list[dict]:
     return data["results"]
 
 
+def _profile_chunk(args: tuple) -> tuple[int, list[dict]]:
+    start_idx, chunk_pts, dt_iso = args
+    return start_idx, _worker_profile(chunk_pts, dt_iso)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--aoi", default="demo")
     parser.add_argument("--hours", default="10,11,12,13,14")
     parser.add_argument("--date", default=None)
     parser.add_argument("--chunk", type=int, default=50, help="points per worker request")
+    parser.add_argument("--workers", type=int, default=0, help="parallel HTTP chunks (0 = all cores)")
     args = parser.parse_args()
+
+    if args.workers > 0:
+        os.environ["PRECOMPUTE_WORKERS"] = str(args.workers)
 
     G = load_graph(args.aoi)
     store = ShadeStore(args.aoi)
     day = args.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     hours = [int(h) for h in args.hours.split(",")]
+    n_workers = worker_count("PRECOMPUTE_WORKERS", minimum=1)
 
     for hour in hours:
         dt = datetime.fromisoformat(f"{day}T{hour:02d}:00:00+00:00")
@@ -68,12 +80,26 @@ def main() -> int:
                 point_meta.append((ek, idx))
 
         shade_by_edge: dict[str, list[bool]] = {ek: [] for ek in edge_samples}
+        chunk_tasks = []
         for i in range(0, len(all_points), args.chunk):
             chunk_pts = all_points[i : i + args.chunk]
-            results = _worker_profile(chunk_pts, dt_iso)
-            for j, r in enumerate(results):
-                ek, _idx = point_meta[i + j]
-                shade_by_edge[ek].append(r.get("inShade", False))
+            chunk_tasks.append((i, chunk_pts, dt_iso))
+
+        workers = min(n_workers, len(chunk_tasks)) if chunk_tasks else 1
+        if workers <= 1:
+            for i, chunk_pts, dt_iso in chunk_tasks:
+                results = _worker_profile(chunk_pts, dt_iso)
+                for j, r in enumerate(results):
+                    ek, _idx = point_meta[i + j]
+                    shade_by_edge[ek].append(r.get("inShade", False))
+        else:
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futures = [pool.submit(_profile_chunk, t) for t in chunk_tasks]
+                for fut in as_completed(futures):
+                    start_idx, results = fut.result()
+                    for j, r in enumerate(results):
+                        ek, _idx = point_meta[start_idx + j]
+                        shade_by_edge[ek].append(r.get("inShade", False))
 
         rows = []
         for ek, flags in shade_by_edge.items():
@@ -81,7 +107,7 @@ def main() -> int:
             sf = sum(flags) / total if total else 0.5
             rows.append((ek, tb, sf, total))
         store.bulk_set(rows)
-        print(f"Cached {len(rows)} edges for {tb}")
+        print(f"Cached {len(rows)} edges for {tb} ({workers} workers)")
 
     return 0
 

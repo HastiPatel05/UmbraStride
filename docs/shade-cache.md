@@ -45,16 +45,35 @@ Optional env vars (see `.env.example`):
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `ROUTING_DIJKSTRA_WORKERS` | `3` | Parallel Dijkstra for shortest / coolest / custom |
+| `UMBRASTIDE_CPU_WORKERS` | all cores | Global default when task-specific vars are `0` |
+| `ROUTING_DIJKSTRA_WORKERS` | all cores | Parallel Dijkstra (one process per α profile) |
+| `ROUTING_BUILD_WORKERS` | (reserved) | Graph build uses vectorized NumPy/BLAS across cores |
 | `ROUTING_LOCAL_MARGIN_DEG` | `0.012` | Crop graph around O/D before search (~1.3 km) |
+| `SHADE_SEED_WORKERS` | all cores | `seed_demo_cache.py` — parallel hours |
+| `PRECOMPUTE_WORKERS` | all cores | `precompute_shade.py` — parallel HTTP chunks |
+| `BOOTSTRAP_WORKERS` | `min(cores, 4)` | `bootstrap_arizona.py --preset all` (OSM rate limits) |
+
+Set any of these to a positive integer to cap workers (e.g. `ROUTING_BUILD_WORKERS=8`).
 
 After the first request for an AOI + time bucket, typical route requests are **under ~0.5 s** on `az-phoenix-core`. The first request still pays GraphML load + graph build (~5 s).
 
 Restart the API after changing routing code: `uvicorn umbrastride_api.main:app --reload`
 
+## Time bucket matching
+
+Routing floors the request datetime to a 15-minute UTC bucket (e.g. `2026-05-21T12:00`). If that bucket is missing in SQLite, the API **uses the nearest cached hour** and sets `shade_cache_exact: false` in the response.
+
+Seed cache for the hours you test with:
+
+```bash
+python scripts/seed_demo_cache.py --aoi az-phoenix-core --hours 10,11,12,13,14
+```
+
+Use the same calendar day as the web app datetime picker, or expect a sidebar hint about the nearest bucket.
+
 ## Mock mode
 
-`scripts/seed_demo_cache.py` writes synthetic shade (higher on north-south streets) so routing works without ShadeMap credentials.
+`scripts/seed_demo_cache.py` writes synthetic shade (varies by street bearing vs sun) so routing works without ShadeMap credentials.
 
 ## Worker
 

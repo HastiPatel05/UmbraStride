@@ -9,18 +9,21 @@ import networkx as nx
 from shapely.geometry import LineString, mapping
 from shapely.ops import linemerge
 
-from umbrastride_geo.graph import edge_key, iter_edges, snap_point_to_graph
+from umbrastride_geo.graph import snap_point_to_graph
 from umbrastride_routing.cache import get_graph, get_routing_graph_for_alphas
+from umbrastride_routing.cpu import worker_count
+from umbrastride_routing.graph_build import alpha_weight_key as _alpha_weight_key
 from umbrastride_routing.shade_store import floor_ts_bucket
+from umbrastride_routing.weights import edge_weight  # noqa: F401 — re-exported via __init__
 
-# Max parallel Dijkstra runs (one per alpha profile)
-_DIJKSTRA_WORKERS = int(os.environ.get("ROUTING_DIJKSTRA_WORKERS", "3"))
-# Crop graph to bbox around O/D (+ margin deg) before Dijkstra
 _LOCAL_MARGIN_DEG = float(os.environ.get("ROUTING_LOCAL_MARGIN_DEG", "0.012"))
 
 
-from umbrastride_routing.graph_build import alpha_weight_key as _alpha_weight_key
-from umbrastride_routing.weights import edge_weight  # noqa: F401 — re-exported via __init__
+def _dijkstra_workers() -> int:
+    if os.environ.get("ROUTING_DIJKSTRA_WORKERS", "").strip() not in ("", "0"):
+        return worker_count("ROUTING_DIJKSTRA_WORKERS", minimum=1)
+    return worker_count("UMBRASTIDE_CPU_WORKERS", minimum=1, cap=32)
+
 
 def _path_geometry(G: nx.MultiDiGraph, path: list) -> dict[str, Any] | None:
     lines = []
@@ -98,7 +101,6 @@ def _route_metrics_digraph(D: nx.DiGraph, path: list) -> dict:
 
 
 def _local_subgraph(D: nx.DiGraph, origin, dest, margin_deg: float) -> nx.DiGraph:
-    """Keep only nodes near origin/destination — much faster for short walks."""
     if origin not in D or dest not in D:
         return D
     ox, oy = float(D.nodes[origin]["x"]), float(D.nodes[origin]["y"])
@@ -134,23 +136,56 @@ def _run_dijkstra_batch(
     dest_node,
     alpha_list: list[float],
 ) -> dict[float, list | None]:
-    """Run shortest-path for each alpha; parallel when ROUTING_DIJKSTRA_WORKERS > 1."""
+    workers = min(_dijkstra_workers(), len(alpha_list))
 
     def one(alpha: float) -> tuple[float, list | None]:
         wkey = _alpha_weight_key(alpha)
         return alpha, _dijkstra(D, origin_node, dest_node, wkey)
 
-    if len(alpha_list) <= 1 or _DIJKSTRA_WORKERS <= 1:
+    if len(alpha_list) <= 1 or workers <= 1:
         return dict(one(a) for a in alpha_list)
 
     out: dict[float, list | None] = {}
-    workers = min(_DIJKSTRA_WORKERS, len(alpha_list))
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(one, a): a for a in alpha_list}
         for fut in as_completed(futures):
             alpha, path = fut.result()
             out[alpha] = path
     return out
+
+
+def _build_route_result(
+    a: float,
+    path: list,
+    D: nx.DiGraph,
+    ts_bucket: str,
+    shortest_dist: float | None,
+) -> tuple[dict, float | None]:
+    metrics = _route_metrics_digraph(D, path)
+    geom = _path_geometry_from_digraph(D, path)
+    label = "custom"
+    if a >= 0.999:
+        label = "shortest"
+    elif a <= 0.001:
+        label = "coolest"
+    new_shortest = shortest_dist
+    if label == "shortest":
+        new_shortest = metrics["distance_m"]
+    detour = (
+        metrics["distance_m"] / new_shortest
+        if new_shortest and new_shortest > 0
+        else 1.0
+    )
+    route = {
+        "label": label,
+        "alpha": a,
+        "geometry": geom,
+        "distance_m": metrics["distance_m"],
+        "shade_fraction": metrics["shade_fraction"],
+        "detour_ratio": round(detour, 3),
+        "ts_bucket": ts_bucket,
+    }
+    return route, new_shortest
 
 
 def compute_routes(
@@ -180,47 +215,27 @@ def compute_routes(
             seen.add(key)
             alpha_list.append(a)
 
-    D = get_routing_graph_for_alphas(aoi_id, ts_bucket, alpha_list)
+    D, shade_ts_bucket, shade_cache_exact = get_routing_graph_for_alphas(
+        aoi_id, ts_bucket, alpha_list
+    )
     D_local = _local_subgraph(D, origin_node, dest_node, _LOCAL_MARGIN_DEG)
     paths_by_alpha = _run_dijkstra_batch(D_local, origin_node, dest_node, alpha_list)
 
     routes = []
     shortest_dist = None
-
     for a in alpha_list:
         path = paths_by_alpha.get(a)
         if path is None:
             continue
-        metrics = _route_metrics_digraph(D, path)
-        geom = _path_geometry_from_digraph(D, path)
-        label = "custom"
-        if a >= 0.999:
-            label = "shortest"
-        elif a <= 0.001:
-            label = "coolest"
-        if shortest_dist is None and label == "shortest":
-            shortest_dist = metrics["distance_m"]
-        detour = (
-            metrics["distance_m"] / shortest_dist
-            if shortest_dist and shortest_dist > 0
-            else 1.0
-        )
-        routes.append(
-            {
-                "label": label,
-                "alpha": a,
-                "geometry": geom,
-                "distance_m": metrics["distance_m"],
-                "shade_fraction": metrics["shade_fraction"],
-                "detour_ratio": round(detour, 3),
-                "ts_bucket": ts_bucket,
-            }
-        )
+        route, shortest_dist = _build_route_result(a, path, D, ts_bucket, shortest_dist)
+        routes.append(route)
 
     return {
         "aoi_id": aoi_id,
         "origin_node": origin_node,
         "dest_node": dest_node,
         "ts_bucket": ts_bucket,
+        "shade_ts_bucket": shade_ts_bucket,
+        "shade_cache_exact": shade_cache_exact,
         "routes": routes,
     }

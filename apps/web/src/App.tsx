@@ -38,6 +38,7 @@ export default function App() {
   const [datetime, setDatetime] = useState(toLocalDatetimeValue(new Date()));
   const [alpha, setAlpha] = useState(0.35);
   const [routes, setRoutes] = useState<RouteResult[]>([]);
+  const [shadeCacheNote, setShadeCacheNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -125,6 +126,14 @@ export default function App() {
         alpha,
       });
       setRoutes(result.routes);
+      if (result.shade_cache_exact === false && result.shade_ts_bucket) {
+        setShadeCacheNote(
+          `Shade data from nearest cached hour (${result.shade_ts_bucket}). ` +
+            `Run seed_demo_cache.py for your selected time, or match the datetime picker.`
+        );
+      } else {
+        setShadeCacheNote(null);
+      }
       if (result.aoi_id && result.aoi_id !== aoiId) {
         setAoiId(result.aoi_id);
       }
@@ -224,6 +233,7 @@ export default function App() {
         </button>
 
         {error && <p className="error">{error}</p>}
+        {shadeCacheNote && <p className="hint">{shadeCacheNote}</p>}
 
         <div className="routes-list">
           {routes.map((r) => (
