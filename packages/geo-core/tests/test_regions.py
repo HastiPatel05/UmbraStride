@@ -9,12 +9,12 @@ def test_load_arizona():
     r = load_region("arizona")
     assert r["region_id"] == "arizona"
     assert len(r["presets"]) >= 5
-    assert r["default_aoi"] == "az-phoenix-core"
+    assert r["default_aoi"] == "az-phoenix"
 
 
 def test_resolve_phoenix_point():
     aoi = resolve_aoi_for_point(-112.07, 33.45, "arizona")
-    assert aoi in ("az-phoenix-core", "az-phoenix")
+    assert aoi == "az-phoenix"
 
 
 def test_tile_count_reasonable():

@@ -2,9 +2,9 @@
   "region_id": "arizona",
   "name": "Arizona, USA",
   "bbox": [-114.816, 31.332, -109.045, 37.004],
-  "default_aoi": "az-phoenix-core",
-  "default_center": [-112.07404, 33.44838],
-  "default_zoom": 16,
+  "default_aoi": "az-phoenix",
+  "default_center": [-112.07, 33.48],
+  "default_zoom": 13,
   "presets": [
     {
       "aoi_id": "az-phoenix-core",

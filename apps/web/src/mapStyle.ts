@@ -1,86 +1,94 @@
 import type maplibregl from "maplibre-gl";
 import type { StyleSpecification } from "maplibre-gl";
 
-const OSM_RASTER_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {
-    osm: {
-      type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "© OpenStreetMap",
-    },
-  },
-  layers: [{ id: "osm", type: "raster", source: "osm" }],
-};
+/** OpenFreeMap vector style — base for 3D buildings per MapLibre docs. */
+export const OPENFREEMAP_STYLE_URL = "https://tiles.openfreemap.org/styles/bright";
 
-/** ShadeMap global building footprints (same tiles as shademap.app). */
-const SHADEMAP_BUILDINGS_SOURCE = {
-  buildings: {
-    type: "vector" as const,
-    encoding: "mlt" as const,
-    tiles: ["https://cfw.shademap.app/buildings/{z}/{x}/{y}.mlt"],
-    minzoom: 14,
-    maxzoom: 14,
-    attribution: "© ShadeMap / OpenStreetMap",
-  },
-};
+export const OPENFREEMAP_SOURCE_ID = "openfreemap";
+export const BUILDINGS_3D_LAYER_ID = "3d-buildings";
 
-function buildingHeightExpression(): maplibregl.ExpressionSpecification {
-  // Heights in ShadeMap tiles are decimeters; divide by 10 for meters.
-  return ["max", 3, ["/", ["coalesce", ["get", "height"], 31], 10]];
+/** First symbol layer id — insert 3D buildings below labels (MapLibre example pattern). */
+export function findLabelLayerId(map: maplibregl.Map): string | undefined {
+  const layers = map.getStyle()?.layers;
+  if (!layers) return undefined;
+  for (const layer of layers) {
+    if (layer.type === "symbol" && layer.layout && "text-field" in layer.layout) {
+      return layer.id;
+    }
+  }
+  return undefined;
 }
 
 /**
- * OSM basemap + ShadeMap building vector tiles for 2.5D extrusions and shadows.
- * Used when VITE_SHADEMAP_API_KEY is set (see ShadeOverlay).
+ * Add OpenFreeMap building extrusions (MapLibre “Display buildings in 3D” example).
+ * @see https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/
  */
-export function getShadeMapStyle(): StyleSpecification {
-  return {
-    version: 8,
-    sources: {
-      osm: OSM_RASTER_STYLE.sources!.osm,
-      ...SHADEMAP_BUILDINGS_SOURCE,
+export function add3dBuildingsLayer(map: maplibregl.Map): void {
+  if (map.getLayer(BUILDINGS_3D_LAYER_ID)) return;
+
+  if (!map.getSource(OPENFREEMAP_SOURCE_ID)) {
+    map.addSource(OPENFREEMAP_SOURCE_ID, {
+      type: "vector",
+      url: "https://tiles.openfreemap.org/planet",
+    });
+  }
+
+  const beforeId = findLabelLayerId(map);
+
+  map.addLayer(
+    {
+      id: BUILDINGS_3D_LAYER_ID,
+      source: OPENFREEMAP_SOURCE_ID,
+      "source-layer": "building",
+      type: "fill-extrusion",
+      minzoom: 15,
+      filter: ["!=", ["get", "hide_3d"], true],
+      paint: {
+        "fill-extrusion-color": [
+          "interpolate",
+          ["linear"],
+          ["get", "render_height"],
+          0,
+          "#c8ccd4",
+          80,
+          "#a8b0bc",
+          200,
+          "#8890a0",
+        ],
+        "fill-extrusion-height": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          15,
+          0,
+          16,
+          ["get", "render_height"],
+        ],
+        "fill-extrusion-base": [
+          "case",
+          [">=", ["get", "zoom"], 16],
+          ["get", "render_min_height"],
+          0,
+        ],
+        "fill-extrusion-opacity": 0.9,
+      },
     },
-    layers: [
-      { id: "osm", type: "raster", source: "osm" },
-      {
-        id: "buildings-footprint",
-        type: "fill",
-        source: "buildings",
-        "source-layer": "building",
-        minzoom: 14,
-        paint: {
-          "fill-color": "#c8ccd4",
-          "fill-opacity": 0.35,
-        },
-      },
-      {
-        id: "buildings-3d",
-        type: "fill-extrusion",
-        source: "buildings",
-        "source-layer": "building",
-        minzoom: 14,
-        paint: {
-          "fill-extrusion-color": "#b8bcc6",
-          "fill-extrusion-height": buildingHeightExpression(),
-          "fill-extrusion-base": 0,
-          "fill-extrusion-opacity": 0.88,
-        },
-      },
-    ],
-  };
+    beforeId
+  );
 }
 
-/** Mapbox Streets includes vector building layer for ShadeMap heights. */
-export function getInitialMapStyle(): StyleSpecification | string {
-  const shadeKey = import.meta.env.VITE_SHADEMAP_API_KEY;
-  if (shadeKey) {
-    return getShadeMapStyle();
+export function usesVector3dBuildings(style: string | StyleSpecification): boolean {
+  if (typeof style === "string") {
+    return style.includes("openfreemap") || style.includes("mapbox.com");
   }
+  return false;
+}
+
+/** Default map style: OpenFreeMap (3D-ready) unless Mapbox token is set. */
+export function getInitialMapStyle(): StyleSpecification | string {
   const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
   if (token) {
     return `https://api.mapbox.com/styles/v1/mapbox/streets-v12?access_token=${token}`;
   }
-  return OSM_RASTER_STYLE;
+  return OPENFREEMAP_STYLE_URL;
 }

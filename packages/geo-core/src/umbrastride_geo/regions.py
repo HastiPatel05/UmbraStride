@@ -89,14 +89,14 @@ def _preset_area(bbox: list[float]) -> float:
 def presets_containing_both(
     lng1: float, lat1: float, lng2: float, lat2: float, region_id: str = "arizona"
 ) -> list[str]:
-    """AOI ids whose bbox contains both points, smallest area first (prefer core over wide)."""
+    """AOI ids whose bbox contains both points, largest area first (prefer wide metro)."""
     region = load_region(region_id)
     matches = []
     for p in region.get("presets", []):
         bbox = p["bbox"]
         if point_in_bbox(lng1, lat1, bbox) and point_in_bbox(lng2, lat2, bbox):
             matches.append((p["aoi_id"], _preset_area(bbox)))
-    matches.sort(key=lambda x: x[1])
+    matches.sort(key=lambda x: x[1], reverse=True)
     return [aid for aid, _ in matches]
 
 
@@ -109,7 +109,7 @@ def resolve_aoi_for_route(
     preferred_aoi: str | None = None,
     region_id: str = "arizona",
 ) -> str:
-    """Pick metro AOI that covers both endpoints; prefer bootstrapped preferred if valid."""
+    """Pick widest metro AOI that covers both endpoints; prefer preferred_aoi if valid."""
     candidates = presets_containing_both(
         origin_lng, origin_lat, dest_lng, dest_lat, region_id
     )
@@ -127,11 +127,15 @@ def resolve_aoi_for_route(
 def resolve_aoi_for_point(
     lng: float, lat: float, region_id: str = "arizona"
 ) -> str | None:
-    """Pick metro preset containing the point, else nearest preset centroid."""
+    """Pick widest metro preset containing the point, else nearest preset centroid."""
     region = load_region(region_id)
+    containing: list[tuple[dict, float]] = []
     for p in region.get("presets", []):
         if point_in_bbox(lng, lat, p["bbox"]):
-            return p["aoi_id"]
+            containing.append((p, _preset_area(p["bbox"])))
+    if containing:
+        containing.sort(key=lambda x: x[1], reverse=True)
+        return containing[0][0]["aoi_id"]
     # nearest preset by bbox center distance
     best_id = region["default_aoi"]
     best_d = math.inf

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import type { RouteResult } from "./api";
-import { getInitialMapStyle } from "./mapStyle";
+import { add3dBuildingsLayer, getInitialMapStyle, usesVector3dBuildings } from "./mapStyle";
 import ShadeOverlay from "./ShadeOverlay";
 
 const ROUTE_COLORS: Record<string, string> = {
@@ -50,19 +50,32 @@ export default function MapView({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    const shadeEnabled = Boolean(import.meta.env.VITE_SHADEMAP_API_KEY);
+    const style = getInitialMapStyle();
+    const enable3d = usesVector3dBuildings(style);
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: getInitialMapStyle(),
+      style,
       center,
       zoom,
-      pitch: shadeEnabled ? 52 : 0,
-      bearing: shadeEnabled ? -24 : 0,
+      pitch: enable3d ? 45 : 0,
+      bearing: enable3d ? -17.6 : 0,
       minZoom: 8,
       maxZoom: 20,
+      antialias: true,
     });
 
     map.addControl(new maplibregl.NavigationControl(), "top-left");
+
+    const onStyleReady = () => {
+      if (!usesVector3dBuildings(style)) return;
+      try {
+        add3dBuildingsLayer(map);
+      } catch (e) {
+        console.warn("3D buildings layer:", e);
+      }
+    };
+    if (map.isStyleLoaded()) onStyleReady();
+    else map.once("load", onStyleReady);
 
     map.on("click", (e) => {
       onPickPointRef.current(pickModeRef.current, e.lngLat.lng, e.lngLat.lat);

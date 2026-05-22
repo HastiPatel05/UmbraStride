@@ -153,7 +153,7 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.55 }: Props) {
       )}
       {status === "ready" && !zoomOk && (
         <div className="shade-banner shade-banner-warn">
-          Zoom in to level {SHADE_MIN_ZOOM}+ to see 3D buildings and shadows
+          Zoom in to level {SHADE_MIN_ZOOM}+ to see 3D buildings and shadows (OpenFreeMap)
         </div>
       )}
       {status === "ready" && zoomOk && buildingCount === 0 && (

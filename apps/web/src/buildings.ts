@@ -1,8 +1,11 @@
 import type maplibregl from "maplibre-gl";
 import osmtogeojson from "osmtogeojson";
+import { OPENFREEMAP_SOURCE_ID } from "./mapStyle";
 
-const MIN_ZOOM = 15;
-const SHADEMAP_BUILDING_MIN_ZOOM = 14;
+/** Match MapLibre 3D buildings example minzoom. */
+export const SHADE_MIN_ZOOM = 15;
+
+const MIN_ZOOM = SHADE_MIN_ZOOM;
 const DEFAULT_HEIGHT_M = 3;
 const LEVEL_HEIGHT_M = 3;
 
@@ -12,21 +15,20 @@ export type BuildingFeature = GeoJSON.Feature<
 >;
 
 function parseHeightMeters(props: Record<string, unknown>): number {
+  const render = props.render_height;
+  if (typeof render === "number" && render > 0) return render;
+  if (typeof render === "string") {
+    const n = parseFloat(render);
+    if (!Number.isNaN(n) && n > 0) return n;
+  }
+
   const h = props.height ?? props["building:height"];
   if (typeof h === "string") {
     const n = parseFloat(h.replace(/m$/i, "").trim());
-    if (!Number.isNaN(n)) return n;
+    if (!Number.isNaN(n)) return n > 50 ? n / 10 : n;
   }
   if (typeof h === "number") {
-    // ShadeMap vector tiles store decimeters
     return h > 50 ? h / 10 : h;
-  }
-
-  const render = props.render_height;
-  if (typeof render === "number") return render;
-  if (typeof render === "string") {
-    const n = parseFloat(render);
-    if (!Number.isNaN(n)) return n;
   }
 
   const levels = props["building:levels"] ?? props.levels;
@@ -70,36 +72,39 @@ export async function waitForMapLoaded(map: maplibregl.Map): Promise<void> {
   });
 }
 
-/** ShadeMap building vector tiles (same source as shademap.app). */
-export async function fetchShadeMapBuildings(
+/** OpenFreeMap planet building layer (same as MapLibre 3D example). */
+export async function fetchOpenFreeMapBuildings(
   map: maplibregl.Map
 ): Promise<BuildingFeature[]> {
-  if (map.getZoom() < SHADEMAP_BUILDING_MIN_ZOOM) return [];
-  if (!map.getSource("buildings")) return [];
+  if (map.getZoom() < MIN_ZOOM) return [];
+  if (!map.getSource(OPENFREEMAP_SOURCE_ID)) return [];
 
   await waitForMapLoaded(map);
 
-  const raw = map.querySourceFeatures("buildings", { sourceLayer: "building" });
+  const raw = map.querySourceFeatures(OPENFREEMAP_SOURCE_ID, {
+    sourceLayer: "building",
+  });
+
   const features: GeoJSON.Feature[] = [];
   const seen = new Set<string>();
 
   for (const f of raw) {
     if (!f.geometry || f.properties?.underground === "true") continue;
+    if (f.properties?.hide_3d === true) continue;
     if (f.geometry.type !== "Polygon" && f.geometry.type !== "MultiPolygon") continue;
-    const id = String(f.id ?? f.properties?.id ?? features.length);
+
+    const props = f.properties as Record<string, unknown> | null;
+    if (!props?.render_height && !props?.height) continue;
+
+    const id = String(f.id ?? props.id ?? features.length);
     if (seen.has(id)) continue;
     seen.add(id);
-    const props = { ...f.properties } as Record<string, unknown>;
-    if (!props.processed) {
-      const heightM = parseHeightMeters(props);
-      props.height = heightM;
-      props.render_height = heightM;
-      props.processed = true;
-    }
+
+    const heightM = parseHeightMeters(props);
     features.push({
       type: "Feature",
       geometry: f.geometry,
-      properties: props,
+      properties: { ...props, height: heightM, render_height: heightM },
     });
   }
 
@@ -175,13 +180,11 @@ export async function fetchBuildingsForMap(
   map: maplibregl.Map,
   mapboxToken?: string
 ): Promise<BuildingFeature[]> {
-  if (map.getZoom() < SHADEMAP_BUILDING_MIN_ZOOM && map.getZoom() < MIN_ZOOM) {
-    return [];
-  }
+  if (map.getZoom() < MIN_ZOOM) return [];
 
-  if (map.getSource("buildings")) {
-    const fromShade = await fetchShadeMapBuildings(map);
-    if (fromShade.length > 0) return fromShade;
+  if (map.getSource(OPENFREEMAP_SOURCE_ID)) {
+    const fromOfm = await fetchOpenFreeMapBuildings(map);
+    if (fromOfm.length > 0) return fromOfm;
   }
 
   if (mapboxToken && map.getSource("composite")) {
@@ -193,10 +196,5 @@ export async function fetchBuildingsForMap(
     }
   }
 
-  if (map.getZoom() >= MIN_ZOOM) {
-    return fetchOverpassBuildings(map);
-  }
-  return [];
+  return fetchOverpassBuildings(map);
 }
-
-export const SHADE_MIN_ZOOM = SHADEMAP_BUILDING_MIN_ZOOM;

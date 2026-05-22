@@ -3,19 +3,15 @@ import { useQuery } from "@tanstack/react-query";
 import MapView from "./MapView";
 import {
   fetchArizonaRegion,
-  fetchAois,
   fetchGraph,
   fetchRoute,
   type RouteResult,
 } from "./api";
+import { resolveAoiForRoute, resolvePresetForPoint } from "./resolveAoi";
 
-const DEFAULT_AOI = import.meta.env.VITE_DEFAULT_AOI || "az-phoenix-core";
-const PHOENIX_CENTER: [number, number] = [-112.07404, 33.44838];
-
-function pointInBbox(lng: number, lat: number, bbox: number[]): boolean {
-  const [west, south, east, north] = bbox;
-  return lng >= west && lng <= east && lat >= south && lat <= north;
-}
+const DEFAULT_AOI = import.meta.env.VITE_DEFAULT_AOI || "az-phoenix";
+const PHOENIX_CENTER: [number, number] = [-112.07, 33.48];
+const PHOENIX_ZOOM = 13;
 
 function toLocalDatetimeValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -24,8 +20,9 @@ function toLocalDatetimeValue(d: Date): string {
 
 export default function App() {
   const [aoiId, setAoiId] = useState(DEFAULT_AOI);
+  const [activePresetName, setActivePresetName] = useState<string | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>(PHOENIX_CENTER);
-  const [mapZoom, setMapZoom] = useState(16);
+  const [mapZoom, setMapZoom] = useState(PHOENIX_ZOOM);
   const [origin, setOrigin] = useState<[number, number] | null>([
     PHOENIX_CENTER[0] - 0.003,
     PHOENIX_CENTER[1] - 0.002,
@@ -47,36 +44,49 @@ export default function App() {
     queryFn: fetchArizonaRegion,
   });
 
-  const { data: aoisData } = useQuery({
-    queryKey: ["aois"],
-    queryFn: fetchAois,
-  });
-
   const bootstrapped = useMemo(
-    () => new Set(aoisData?.aois?.map((a) => a.aoi_id) ?? []),
-    [aoisData]
+    () => new Set(region?.bootstrapped_aois ?? []),
+    [region?.bootstrapped_aois]
   );
+
+  const activePreset = useMemo(
+    () => region?.presets.find((p) => p.aoi_id === aoiId) ?? null,
+    [region, aoiId]
+  );
+
+  const metroBbox = activePreset?.bbox;
+
+  // Auto-select AOI from map picks (smallest metro containing both points).
+  useEffect(() => {
+    if (!region || !origin) return;
+
+    let resolved: { aoiId: string; preset: { aoi_id: string; name: string; bbox: number[] } };
+    if (destination) {
+      resolved = resolveAoiForRoute(origin, destination, region, bootstrapped);
+    } else {
+      const preset = resolvePresetForPoint(origin[0], origin[1], region, bootstrapped);
+      resolved = { aoiId: preset.aoi_id, preset };
+    }
+
+    setActivePresetName(resolved.preset.name);
+    setAoiId((prev) => {
+      if (prev !== resolved.aoiId) {
+        const [w, s, e, n] = resolved.preset.bbox;
+        setMapCenter([(w + e) / 2, (s + n) / 2]);
+        setMapZoom(region.default_zoom ?? 16);
+      }
+      return resolved.aoiId;
+    });
+  }, [region, origin, destination, bootstrapped]);
 
   const { data: graph, error: graphError } = useQuery({
     queryKey: ["graph", aoiId],
     queryFn: () => fetchGraph(aoiId),
     retry: false,
+    enabled: Boolean(aoiId),
   });
 
-  useEffect(() => {
-    if (!region) return;
-    const preset = region.presets.find((p) => p.aoi_id === aoiId);
-    if (preset) {
-      const [w, s, e, n] = preset.bbox;
-      setMapCenter([(w + e) / 2, (s + n) / 2]);
-      setMapZoom(region.default_zoom ?? 16);
-    }
-  }, [aoiId, region]);
-
   const datetimeIso = useMemo(() => new Date(datetime).toISOString(), [datetime]);
-
-  const presetOptions = region?.presets ?? [];
-  const activePreset = presetOptions.find((p) => p.aoi_id === aoiId);
 
   const onPickPoint = useCallback(
     (kind: "origin" | "destination", lng: number, lat: number) => {
@@ -91,35 +101,19 @@ export default function App() {
       setError("Set origin and destination on the map");
       return;
     }
-    const preset = presetOptions.find((p) => p.aoi_id === aoiId);
-    if (preset) {
-      const inOrigin = pointInBbox(origin[0], origin[1], preset.bbox);
-      const inDest = pointInBbox(destination[0], destination[1], preset.bbox);
-      if (!inOrigin || !inDest) {
-        setError(
-          `Origin or destination is outside "${preset.name}". Move both points inside that metro ` +
-            `(blue outline on map) or pick another metro from the list.`
-        );
-        return;
-      }
-    }
 
-    if (aoiId === "demo") {
+    if (!bootstrapped.has(aoiId)) {
       setError(
-        'AOI "demo" is the old Munich sample and does not cover Arizona. Select "Phoenix downtown (fast)" or run bootstrap_arizona.'
+        `No street network for this area (${activePresetName ?? aoiId}). ` +
+          `Run: python scripts/bootstrap_arizona.py --preset ${aoiId}`
       );
       return;
     }
 
-    if (!bootstrapped.has(aoiId)) {
-      setError(`Graph not loaded for ${aoiId}. Run: python scripts/bootstrap_arizona.py --preset ${aoiId}`);
-      return;
-    }
     setLoading(true);
     setError(null);
     try {
       const result = await fetchRoute({
-        aoi_id: aoiId,
         origin: { lng: origin[0], lat: origin[1] },
         destination: { lng: destination[0], lat: destination[1] },
         datetime: datetimeIso,
@@ -136,6 +130,8 @@ export default function App() {
       }
       if (result.aoi_id && result.aoi_id !== aoiId) {
         setAoiId(result.aoi_id);
+        const p = region?.presets.find((x) => x.aoi_id === result.aoi_id);
+        if (p) setActivePresetName(p.name);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Route failed");
@@ -149,30 +145,18 @@ export default function App() {
     <div className="app">
       <aside className="panel">
         <h1>UmbraStride</h1>
-        <p className="subtitle">Arizona · shadow-oriented walking</p>
+        <p className="subtitle">Shadow-oriented walking — area picked from the map</p>
 
-        <div className="field">
-          <label>Metro / AOI (Arizona)</label>
-          <select value={aoiId} onChange={(e) => setAoiId(e.target.value)}>
-            {presetOptions.map((p) => (
-              <option key={p.aoi_id} value={p.aoi_id}>
-                {p.name}
-                {!bootstrapped.has(p.aoi_id) ? " (not bootstrapped)" : ""}
-              </option>
-            ))}
-            {aoisData?.aois
-              ?.filter((a) => !presetOptions.some((p) => p.aoi_id === a.aoi_id))
-              .map((a) => (
-                <option key={a.aoi_id} value={a.aoi_id}>
-                  {a.aoi_id}
-                </option>
-              ))}
-          </select>
-        </div>
+        {activePresetName && (
+          <p className="hint" style={{ marginTop: 0 }}>
+            Active area: <strong>{activePresetName}</strong>
+            {!bootstrapped.has(aoiId) ? " (graph not loaded)" : ""}
+          </p>
+        )}
 
         {graphError && (
           <p className="error">
-            No graph for {aoiId}. Run:{" "}
+            No graph for this area. Run:{" "}
             <code>python scripts/bootstrap_arizona.py --preset {aoiId}</code>
           </p>
         )}
@@ -198,7 +182,8 @@ export default function App() {
             </button>
           </div>
           <p className="pick-hint" style={{ marginTop: "0.35rem" }}>
-            Select Origin or Destination, then click anywhere on the map.
+            Select Origin or Destination, then click the map. The nearest metro graph is chosen
+            automatically.
           </p>
         </div>
 
@@ -252,14 +237,6 @@ export default function App() {
             </div>
           ))}
         </div>
-
-        <p className="hint">
-          Full state: <code>python scripts/bootstrap_arizona.py --preset all</code>
-          <br />
-          One metro: <code>python scripts/bootstrap_arizona.py --preset az-phoenix</code>
-          <br />
-          Grid tiles: <code>python scripts/bootstrap_arizona.py --list-tiles</code>
-        </p>
       </aside>
       <main>
         <MapView
@@ -273,7 +250,7 @@ export default function App() {
           center={mapCenter}
           zoom={mapZoom}
           stateBbox={region?.bbox}
-          metroBbox={activePreset?.bbox}
+          metroBbox={metroBbox}
         />
       </main>
     </div>
