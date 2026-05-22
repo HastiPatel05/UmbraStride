@@ -10,7 +10,18 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from umbrastride_geo import bootstrap_aoi, graph_to_geojson, list_aois, load_graph, resolve_data_dir
+from umbrastride_geo import (
+    bootstrap_aoi,
+    graph_to_geojson,
+    list_aois,
+    list_regions,
+    load_graph,
+    load_region,
+    resolve_aoi_for_point,
+    resolve_aoi_for_route,
+    presets_containing_both,
+)
+from umbrastride_geo.regions import bbox_to_str, estimate_tile_count, get_preset, iter_tile_bboxes
 from umbrastride_routing import ShadeStore, compute_routes
 from umbrastride_routing.shade_store import floor_ts_bucket
 
@@ -36,7 +47,10 @@ class LngLat(BaseModel):
 
 
 class RouteRequest(BaseModel):
-    aoi_id: str = Field(default_factory=lambda: os.environ.get("DEFAULT_AOI_ID", "demo"))
+    aoi_id: str | None = Field(
+        default=None,
+        description="AOI id (e.g. az-phoenix). Auto-resolved from origin if omitted.",
+    )
     origin: LngLat
     destination: LngLat
     datetime: str
@@ -56,6 +70,33 @@ class BootstrapRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/v1/regions")
+def get_regions():
+    return {"regions": list_regions()}
+
+
+@app.get("/v1/regions/{region_id}")
+def get_region(region_id: str):
+    try:
+        region = load_region(region_id)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+    return {
+        **region,
+        "tile_count": estimate_tile_count(region),
+        "bootstrapped_aois": [a["aoi_id"] for a in list_aois() if a["aoi_id"].startswith("az-")],
+    }
+
+
+@app.get("/v1/regions/{region_id}/resolve")
+def resolve_region_aoi(region_id: str, lng: float, lat: float):
+    try:
+        aoi_id = resolve_aoi_for_point(lng, lat, region_id)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+    return {"aoi_id": aoi_id, "lng": lng, "lat": lat}
 
 
 @app.get("/v1/aoi")
@@ -146,9 +187,32 @@ def post_route(body: RouteRequest):
     except ValueError as e:
         raise HTTPException(400, f"invalid datetime: {e}") from e
 
+    aoi_id = resolve_aoi_for_route(
+        body.origin.lng,
+        body.origin.lat,
+        body.destination.lng,
+        body.destination.lat,
+        preferred_aoi=body.aoi_id,
+        region_id="arizona",
+    )
+
+    candidates = presets_containing_both(
+        body.origin.lng,
+        body.origin.lat,
+        body.destination.lng,
+        body.destination.lat,
+        "arizona",
+    )
+    if body.aoi_id and body.aoi_id not in candidates and not candidates:
+        raise HTTPException(
+            400,
+            f"Origin and destination are outside the '{body.aoi_id}' metro bounds. "
+            "Move both points inside the same metro area or select a different metro.",
+        )
+
     try:
         result = compute_routes(
-            body.aoi_id,
+            aoi_id,
             body.origin.lng,
             body.origin.lat,
             body.destination.lng,
@@ -165,7 +229,25 @@ def post_route(body: RouteRequest):
     if not result["routes"]:
         raise HTTPException(404, "no route found between origin and destination")
 
+    result["aoi_id"] = aoi_id
     return result
+
+
+class BootstrapPresetRequest(BaseModel):
+    preset: str = "az-phoenix"
+
+
+@app.post("/v1/regions/{region_id}/bootstrap-preset")
+def bootstrap_region_preset(region_id: str, body: BootstrapPresetRequest):
+    try:
+        region = load_region(region_id)
+        preset = get_preset(region, body.preset)
+        meta = bootstrap_aoi(preset["aoi_id"], bbox_to_str(preset["bbox"]))
+        return meta
+    except (FileNotFoundError, KeyError) as e:
+        raise HTTPException(404, str(e)) from e
+    except Exception as e:
+        raise HTTPException(500, str(e)) from e
 
 
 @app.post("/v1/aoi/bootstrap")

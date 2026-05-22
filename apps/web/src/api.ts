@@ -12,13 +12,38 @@ export type RouteResult = {
   ts_bucket: string;
 };
 
-export async function fetchRoute(params: {
+export type ArizonaPreset = {
   aoi_id: string;
+  name: string;
+  bbox: number[];
+  description?: string;
+};
+
+export type ArizonaRegion = {
+  region_id: string;
+  name: string;
+  bbox: number[];
+  default_aoi: string;
+  default_center: [number, number];
+  default_zoom: number;
+  presets: ArizonaPreset[];
+  tile_count?: number;
+  bootstrapped_aois?: string[];
+};
+
+export async function fetchArizonaRegion(): Promise<ArizonaRegion> {
+  const res = await fetch(`${API_BASE}/v1/regions/arizona`);
+  if (!res.ok) throw new Error("Failed to load Arizona region");
+  return res.json();
+}
+
+export async function fetchRoute(params: {
+  aoi_id?: string;
   origin: LngLat;
   destination: LngLat;
   datetime: string;
   alpha: number;
-}): Promise<{ routes: RouteResult[]; ts_bucket: string }> {
+}): Promise<{ routes: RouteResult[]; ts_bucket: string; aoi_id?: string }> {
   const res = await fetch(`${API_BASE}/v1/route`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

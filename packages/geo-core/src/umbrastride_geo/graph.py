@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -89,6 +90,7 @@ def bootstrap_aoi(
         "edges": G.number_of_edges(),
         "network_type": network_type,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "region": "arizona" if aoi_id.startswith("az-") else None,
     }
     aoi_meta_path(data_dir, aoi_id).write_text(json.dumps(meta, indent=2))
     return meta
@@ -144,13 +146,26 @@ def graph_to_geojson(G: nx.MultiDiGraph) -> dict[str, Any]:
 
 
 def snap_point_to_graph(
-    G: nx.MultiDiGraph, lng: float, lat: float, *, max_dist_m: float = 500.0
+    G: nx.MultiDiGraph,
+    lng: float,
+    lat: float,
+    *,
+    max_dist_m: float | None = None,
+    label: str = "point",
 ) -> tuple[Any, float]:
-    """Return nearest node and distance in meters."""
+    """Return nearest pedestrian network node and distance in meters."""
     import osmnx as ox
+
+    if max_dist_m is None:
+        max_dist_m = float(os.environ.get("SNAP_MAX_DIST_M", "1200"))
 
     x, y = lng, lat
     node, dist = ox.distance.nearest_nodes(G, x, y, return_dist=True)
+    dist = float(dist)
     if dist > max_dist_m:
-        raise ValueError(f"No graph node within {max_dist_m}m of ({lng}, {lat})")
-    return node, float(dist)
+        raise ValueError(
+            f"{label}: no walk network within {max_dist_m:.0f}m of ({lng:.5f}, {lat:.5f}) "
+            f"(nearest sidewalk ~{dist:.0f}m away). Click closer to a street or choose a metro "
+            f"that covers this area."
+        )
+    return node, dist

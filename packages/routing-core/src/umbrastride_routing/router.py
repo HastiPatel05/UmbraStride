@@ -115,8 +115,8 @@ def compute_routes(
     store = ShadeStore(aoi_id)
     ts_bucket = floor_ts_bucket(dt)
 
-    origin_node, _ = snap_point_to_graph(G, origin_lng, origin_lat)
-    dest_node, _ = snap_point_to_graph(G, dest_lng, dest_lat)
+    origin_node, _ = snap_point_to_graph(G, origin_lng, origin_lat, label="Origin")
+    dest_node, _ = snap_point_to_graph(G, dest_lng, dest_lat, label="Destination")
 
     alphas = compare_alphas if compare_alphas is not None else [1.0, 0.0, alpha]
     # unique preserving order

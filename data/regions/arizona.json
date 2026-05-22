@@ -1,0 +1,74 @@
+{
+  "region_id": "arizona",
+  "name": "Arizona, USA",
+  "bbox": [-114.816, 31.332, -109.045, 37.004],
+  "default_aoi": "az-phoenix-core",
+  "default_center": [-112.07404, 33.44838],
+  "default_zoom": 16,
+  "presets": [
+    {
+      "aoi_id": "az-phoenix-core",
+      "name": "Phoenix downtown (fast)",
+      "bbox": [-112.12, 33.42, -112.02, 33.50],
+      "description": "Central Phoenix ~5 km — recommended for dev"
+    },
+    {
+      "aoi_id": "az-phoenix",
+      "name": "Phoenix metro (wide)",
+      "bbox": [-112.22, 33.38, -111.92, 33.58],
+      "description": "Phoenix, Tempe, Scottsdale (~25 km)"
+    },
+    {
+      "aoi_id": "az-tucson",
+      "name": "Tucson metro",
+      "bbox": [-111.15, 32.05, -110.65, 32.45],
+      "description": "Tucson and surrounding areas"
+    },
+    {
+      "aoi_id": "az-flagstaff",
+      "name": "Flagstaff",
+      "bbox": [-111.75, 35.12, -111.45, 35.28],
+      "description": "Flagstaff urban area"
+    },
+    {
+      "aoi_id": "az-prescott",
+      "name": "Prescott area",
+      "bbox": [-112.55, 34.45, -112.35, 34.65],
+      "description": "Prescott / Prescott Valley"
+    },
+    {
+      "aoi_id": "az-yuma",
+      "name": "Yuma",
+      "bbox": [-114.75, 32.6, -114.55, 32.75],
+      "description": "Yuma southwest corner"
+    },
+    {
+      "aoi_id": "az-lake-havasu",
+      "name": "Lake Havasu City",
+      "bbox": [-114.4, 34.4, -114.25, 34.55],
+      "description": "Lake Havasu City"
+    },
+    {
+      "aoi_id": "az-sedona",
+      "name": "Sedona / Verde Valley",
+      "bbox": [-111.85, 34.8, -111.65, 34.95],
+      "description": "Sedona and Oak Creek area"
+    },
+    {
+      "aoi_id": "az-nogales",
+      "name": "Nogales",
+      "bbox": [-111.05, 31.3, -110.9, 31.4],
+      "description": "Nogales border area"
+    },
+    {
+      "aoi_id": "az-show-low",
+      "name": "Show Low / White Mountains",
+      "bbox": [-110.15, 34.05, -109.95, 34.25],
+      "description": "Eastern Arizona high country"
+    }
+  ],
+  "tile_grid": {
+    "step_deg": 0.25,
+    "note": "Full state uses tiled AOIs az-tile-W_S (west,south). Bootstrap on demand — see scripts/bootstrap_arizona.py --list-tiles"
+  }
+}

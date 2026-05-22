@@ -35,11 +35,14 @@ pip install -e "packages/geo-core[dev]" -e "packages/routing-core[dev]" -e "serv
 # Node packages
 npm install
 
-# Bootstrap demo AOI (small bbox in Munich)
-python scripts/bootstrap_aoi.py --name demo --bbox 11.570,48.130,11.590,48.145
+# Bootstrap Arizona (Phoenix metro by default)
+python scripts/bootstrap_arizona.py --preset az-phoenix
 
-# Seed mock shade cache (works without ShadeMap key for routing tests)
-python scripts/seed_demo_cache.py --aoi demo
+# Or all Arizona metros + shade cache
+./scripts/seed_arizona.sh
+
+# Seed mock shade cache for one metro
+python scripts/seed_demo_cache.py --aoi az-phoenix
 ```
 
 ### Run
@@ -58,11 +61,21 @@ npm run dev:worker
 
 Open http://localhost:5173 — pick origin/destination on the map, set datetime and alpha, then **Find routes**.
 
+### 2.5D building shadows on the map (like shademap.app)
+
+```bash
+cp apps/web/.env.example apps/web/.env
+# Set VITE_SHADEMAP_API_KEY from https://shademap.app/about/
+npm run dev:web
+```
+
+At zoom **15+**, the map loads OSM building footprints (Overpass) with heights and renders ShadeMap shadows for the selected date/time. Optional `VITE_MAPBOX_ACCESS_TOKEN` improves building heights where Mapbox data is available.
+
 ### Precompute shade (requires SHADEMAP_API_KEY + worker)
 
 ```bash
 npm run dev:worker
-python scripts/precompute_shade.py --aoi demo --hours 10,11,12,13,14
+python scripts/precompute_shade.py --aoi az-phoenix --hours 10,11,12,13,14
 ```
 
 ## Environment variables
@@ -72,6 +85,7 @@ See [.env.example](.env.example).
 ## Documentation
 
 - [Paper mapping](docs/paper-mapping.md)
+- [Arizona coverage](docs/arizona.md)
 - [Shade cache](docs/shade-cache.md)
 - [API](docs/api.md)
 
