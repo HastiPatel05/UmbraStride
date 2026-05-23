@@ -87,7 +87,7 @@ export async function buildingAwareShadeProfile(
     if (altitude <= 0) {
       inShade = true;
     } else if (buildings.length === 0) {
-      const sf = syntheticShadeFraction(p.lng, p.lat, hour, null);
+      const sf = syntheticShadeFraction(p.lng, p.lat, hour, null, datetime);
       inShade = sf > 0.5;
     } else {
       inShade = rayHitsBuilding(p.lng, p.lat, azimuth, altitude, buildings);

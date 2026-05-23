@@ -48,6 +48,7 @@ export async function fetchRoute(params: {
   ts_bucket: string;
   shade_ts_bucket?: string;
   shade_cache_exact?: boolean;
+  sun_below_horizon?: boolean;
   aoi_id?: string;
 }> {
   const res = await fetch(`${API_BASE}/v1/route`, {

@@ -247,6 +247,7 @@ Compute up to three routes: **shortest** (α=1), **coolest** (α=0), and **custo
   "ts_bucket": "2026-05-22T12:00",
   "shade_ts_bucket": "2026-05-22T12:00",
   "shade_cache_exact": true,
+  "sun_below_horizon": false,
   "routes": [
     {
       "label": "shortest",
@@ -285,6 +286,8 @@ Compute up to three routes: **shortest** (α=1), **coolest** (α=0), and **custo
 | `distance_m` | Path length (meters) |
 | `shade_fraction` | Length-weighted average shade along path |
 | `detour_ratio` | Distance / shortest distance |
+
+| `sun_below_horizon` | When `true`, sun is down at both endpoints; coolest and shortest use uniform full shade (same path) |
 
 **Errors:**
 

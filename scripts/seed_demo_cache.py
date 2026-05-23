@@ -11,12 +11,18 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from umbrastride_geo.graph import edge_key, iter_edges, load_graph
+from umbrastride_geo.sun import NIGHT_UNIFORM_SHADE, is_sun_below_horizon
 from umbrastride_routing.cpu import worker_count
 from umbrastride_routing.shade_store import ShadeStore, floor_ts_bucket
 
 
-def _synthetic_shade(lng: float, lat: float, hour: int, bearing_deg: float | None) -> float:
+def _synthetic_shade(
+    lng: float, lat: float, hour: int, bearing_deg: float | None, *, dt: datetime
+) -> float:
     """Mock shade with directional and corridor variation for visible demo routes."""
+    if is_sun_below_horizon(dt, lat, lng):
+        return NIGHT_UNIFORM_SHADE
+
     sun_az = 180.0 + (hour - 12) * 15.0
     sun_rad = math.radians(sun_az)
     base = 0.28 + 0.10 * math.cos(math.radians((hour - 12) * 20))
@@ -63,7 +69,7 @@ def _hour_rows(args: tuple) -> list[tuple]:
         if lng is None:
             sf = 0.5
         else:
-            sf = _synthetic_shade(lng, lat, hour, bearing)
+            sf = _synthetic_shade(lng, lat, hour, bearing, dt=dt)
         out.append((ek, tb, sf, 5))
     return out
 

@@ -1,4 +1,5 @@
 import type { LngLat, ShadeProfilePoint } from "@umbrastride/shared-types";
+import { isSunBelowHorizon, NIGHT_UNIFORM_SHADE } from "./sun.js";
 
 /**
  * Synthetic shade aligned with scripts/seed_demo_cache.py (_synthetic_shade).
@@ -8,8 +9,13 @@ export function syntheticShadeFraction(
   lng: number,
   lat: number,
   hour: number,
-  bearingDeg: number | null
+  bearingDeg: number | null,
+  datetime: string
 ): number {
+  if (isSunBelowHorizon(datetime, lat, lng)) {
+    return NIGHT_UNIFORM_SHADE;
+  }
+
   const sunAz = 180.0 + (hour - 12) * 15.0;
   const sunRad = (sunAz * Math.PI) / 180;
   let base = 0.28 + 0.1 * Math.cos(((hour - 12) * 20 * Math.PI) / 180);
@@ -35,7 +41,7 @@ export function syntheticShadeProfile(
 ): ShadeProfilePoint[] {
   const hour = new Date(datetime).getUTCHours();
   return points.map((p) => {
-    const sf = syntheticShadeFraction(p.lng, p.lat, hour, null);
+    const sf = syntheticShadeFraction(p.lng, p.lat, hour, null, datetime);
     return { lng: p.lng, lat: p.lat, inShade: sf > 0.5 };
   });
 }

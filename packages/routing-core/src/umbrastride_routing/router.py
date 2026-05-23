@@ -9,6 +9,7 @@ from shapely.geometry import LineString, mapping
 from shapely.ops import linemerge
 
 from umbrastride_geo.graph import geometry_for_edge_key, snap_point_to_graph
+from umbrastride_geo.sun import is_route_at_night
 from umbrastride_routing.cache import get_graph, get_routing_graph_for_alphas
 from umbrastride_routing.graph_build import alpha_weight_key as _alpha_weight_key
 from umbrastride_routing.pathfind import corridor_subgraph, run_shortest_paths_batch
@@ -137,8 +138,13 @@ def compute_routes(
             seen.add(key)
             alpha_list.append(a)
 
-    D, shade_ts_bucket, shade_cache_exact = get_routing_graph_for_alphas(
-        aoi_id, ts_bucket, alpha_list
+    sun_below_horizon = is_route_at_night(dt, origin_lat, origin_lng, dest_lat, dest_lng)
+
+    D, shade_ts_bucket, shade_cache_exact, _ = get_routing_graph_for_alphas(
+        aoi_id,
+        ts_bucket,
+        alpha_list,
+        uniform_full_shade=sun_below_horizon,
     )
     D_local = corridor_subgraph(D, origin_node, dest_node, _LOCAL_MARGIN_DEG)
     paths_by_alpha = run_shortest_paths_batch(D_local, origin_node, dest_node, alpha_list)
@@ -159,5 +165,6 @@ def compute_routes(
         "ts_bucket": ts_bucket,
         "shade_ts_bucket": shade_ts_bucket,
         "shade_cache_exact": shade_cache_exact,
+        "sun_below_horizon": sun_below_horizon,
         "routes": routes,
     }

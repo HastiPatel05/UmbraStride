@@ -136,6 +136,8 @@ weight  = α * L + (1 - α) * (L_sun * β + L_shade)
 Code: `packages/routing-core/src/umbrastride_routing/weights.py`  
 Default **β = 5** (`SUN_AVERSION_BETA`).
 
+When the **sun is below the horizon** at both origin and destination, routing uses **uniform full shade** (S = 1). Coolest and shortest then share the **same path**.
+
 Each request: paths for **α ∈ {1.0, 0.0, your α}** in parallel when `ROUTING_DIJKSTRA_WORKERS` > 0.
 
 ---

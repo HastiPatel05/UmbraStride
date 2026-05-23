@@ -121,7 +121,11 @@ export default function App() {
         alpha,
       });
       setRoutes(result.routes);
-      if (result.shade_cache_exact === false && result.shade_ts_bucket) {
+      if (result.sun_below_horizon) {
+        setShadeCacheNote(
+          "Sun is below the horizon — coolest and shortest routes use the same distance (full shade)."
+        );
+      } else if (result.shade_cache_exact === false && result.shade_ts_bucket) {
         setShadeCacheNote(
           `Shade data from nearest cached hour (${result.shade_ts_bucket}). ` +
             `Run seed_demo_cache.py for your selected time, or match the datetime picker.`

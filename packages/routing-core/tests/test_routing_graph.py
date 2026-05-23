@@ -51,3 +51,28 @@ def test_compute_routes_prefers_shade_at_alpha_zero(tmp_path, monkeypatch):
     coolest = next(r for r in result["routes"] if r["label"] == "coolest")
     shortest = next(r for r in result["routes"] if r["label"] == "shortest")
     assert coolest["shade_fraction"] >= shortest["shade_fraction"]
+
+
+def test_compute_routes_shortest_equals_coolest_at_night(tmp_path, monkeypatch):
+    """When sun is below horizon, uniform shade => same path for shortest and coolest."""
+    _synthetic_graph(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        "umbrastride_routing.router.is_route_at_night",
+        lambda *_args, **_kwargs: True,
+    )
+    night = datetime(2026, 6, 21, 8, 0, tzinfo=timezone.utc)
+    result = compute_routes(
+        "test",
+        0.0001,
+        0.0001,
+        0.0001,
+        0.0009,
+        night,
+        0.0,
+        compare_alphas=[1.0, 0.0],
+    )
+    assert result["sun_below_horizon"] is True
+    shortest = next(r for r in result["routes"] if r["label"] == "shortest")
+    coolest = next(r for r in result["routes"] if r["label"] == "coolest")
+    assert shortest["distance_m"] == coolest["distance_m"]
+    assert shortest["geometry"] == coolest["geometry"]

@@ -11,7 +11,7 @@ import networkx as nx
 from umbrastride_geo.aoi import resolve_data_dir, routing_cache_dir
 from umbrastride_routing.graph_build import alpha_weight_key
 
-ROUTING_CACHE_VERSION = 2
+ROUTING_CACHE_VERSION = 3
 
 
 @dataclass(frozen=True)
@@ -21,11 +21,13 @@ class RoutingCacheKey:
     shade_mtime: float
     resolved_bucket: str
     alphas: tuple[float, ...]
+    uniform_full_shade: bool = False
 
     def digest(self) -> str:
         raw = (
             f"v{ROUTING_CACHE_VERSION}|{self.graph_mtime}|{self.shade_mtime}|"
-            f"{self.resolved_bucket}|{','.join(str(a) for a in self.alphas)}"
+            f"{self.resolved_bucket}|{self.uniform_full_shade}|"
+            f"{','.join(str(a) for a in self.alphas)}"
         )
         return hashlib.sha256(raw.encode()).hexdigest()[:20]
 

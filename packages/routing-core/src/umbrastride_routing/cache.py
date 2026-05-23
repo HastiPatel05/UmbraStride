@@ -11,6 +11,7 @@ import numpy as np
 from umbrastride_geo.aoi import aoi_graph_path, resolve_data_dir
 from umbrastride_geo.edge_index import ensure_edge_index, load_edge_index
 from umbrastride_geo.graph import load_graph
+from umbrastride_geo.sun import NIGHT_UNIFORM_SHADE
 from umbrastride_routing.disk_cache import RoutingCacheKey, load_routing_digraph, save_routing_digraph
 from umbrastride_routing.graph_build import build_routing_digraph
 from umbrastride_routing.shade_store import ShadeStore, floor_ts_bucket
@@ -76,6 +77,20 @@ def get_shade_map(aoi_id: str, ts_bucket: str) -> tuple[str, dict[str, float], b
     return resolved, shade_map, exact
 
 
+def _shade_array_for_routing(
+    aoi_id: str,
+    ts_bucket: str,
+    graph_mtime: float,
+    db_mtime: float,
+    *,
+    uniform_full_shade: bool,
+) -> tuple[str, np.ndarray, bool]:
+    resolved, arr, exact = _shade_array_cached(aoi_id, ts_bucket, db_mtime, graph_mtime)
+    if uniform_full_shade:
+        arr = np.full_like(arr, NIGHT_UNIFORM_SHADE, dtype=np.float32)
+    return resolved, arr, exact
+
+
 @lru_cache(maxsize=16)
 def get_routing_digraph(
     aoi_id: str,
@@ -83,15 +98,19 @@ def get_routing_digraph(
     graph_mtime: float,
     db_mtime: float,
     alphas_key: tuple[float, ...],
+    uniform_full_shade: bool,
 ) -> nx.DiGraph:
     """Cached collapsed DiGraph with precomputed weights for all requested alphas."""
-    resolved_bucket, shade_array, _ = _shade_array_cached(aoi_id, ts_bucket, db_mtime, graph_mtime)
+    resolved_bucket, shade_array, _ = _shade_array_for_routing(
+        aoi_id, ts_bucket, graph_mtime, db_mtime, uniform_full_shade=uniform_full_shade
+    )
     cache_key = RoutingCacheKey(
         aoi_id=aoi_id,
         graph_mtime=graph_mtime,
         shade_mtime=db_mtime,
         resolved_bucket=resolved_bucket,
         alphas=alphas_key,
+        uniform_full_shade=uniform_full_shade,
     )
     cached = load_routing_digraph(cache_key)
     if cached is not None:
@@ -114,15 +133,21 @@ def get_routing_digraph(
 
 
 def get_routing_graph_for_alphas(
-    aoi_id: str, ts_bucket: str, alphas: list[float]
-) -> tuple[nx.DiGraph, str, bool]:
-    """Return routing graph plus resolved shade bucket metadata."""
+    aoi_id: str,
+    ts_bucket: str,
+    alphas: list[float],
+    *,
+    uniform_full_shade: bool = False,
+) -> tuple[nx.DiGraph, str, bool, bool]:
+    """Return routing graph, shade bucket metadata, and whether night uniform shade was applied."""
     gm = _graph_mtime(aoi_id)
     dm = _shade_db_mtime(aoi_id)
     merged = tuple(sorted({0.0, 1.0, *[round(a, 4) for a in alphas]}))
-    resolved_bucket, _, exact = _shade_array_cached(aoi_id, ts_bucket, dm, gm)
-    D = get_routing_digraph(aoi_id, ts_bucket, gm, dm, merged)
-    return D, resolved_bucket, exact
+    resolved_bucket, _, exact = _shade_array_for_routing(
+        aoi_id, ts_bucket, gm, dm, uniform_full_shade=uniform_full_shade
+    )
+    D = get_routing_digraph(aoi_id, ts_bucket, gm, dm, merged, uniform_full_shade)
+    return D, resolved_bucket, exact, uniform_full_shade
 
 
 def warm_routing_cache(
