@@ -148,7 +148,15 @@ Wait until bootstrap finishes (wide Phoenix can take several minutes).
 **If they still differ at night:**
 
 1. Confirm datetime is truly night at **both** points (not dusk with one point still in daylight).
-2. Re-seed night hours: `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5`
+2. Pull latest code, install `geo-core` (for **astral**), and re-seed night hours — full steps in [Setup — Night shade buckets](setup.md#night-shade-buckets-after-pulling-tanmay):
+
+   ```bash
+   git pull origin tanmay
+   source .venv/bin/activate
+   pip install -e packages/geo-core   # pulls in astral
+   python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5
+   ```
+
 3. Restart API (clears in-memory cache) or call `POST .../routing/warm`.
 4. Check API response: `sun_below_horizon` should be `true`.
 

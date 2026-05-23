@@ -170,7 +170,7 @@ See [docs/configuration.md](docs/configuration.md).
 |---------|---------|
 | `python scripts/bootstrap_arizona.py --preset az-phoenix` | Download walk streets |
 | `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14` | Synthetic shade (day); night hours get uniform full shade |
-| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5` | Night shade buckets |
+| `git pull origin tanmay` + night seed (see [docs/setup.md](docs/setup.md#night-shade-buckets-after-pulling-tanmay)) | Night shade buckets (`pip install -e packages/geo-core` for astral) |
 | `POST /v1/aoi/az-phoenix/routing/warm` | Preload routing cache |
 | `docker compose up` | API + worker + web — [docs/docker.md](docs/docker.md) |
 | `npm run dev:web` | Web dev server :5173 |

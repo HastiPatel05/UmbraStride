@@ -77,11 +77,16 @@ python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date
 python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14
 ```
 
-**Night hours** (optional — same script, uniform full shade when sun is below horizon):
+**Night hours** (optional — same script; uses **astral** for sun position; uniform full shade when sun is below horizon):
 
 ```bash
+git pull origin tanmay
+source .venv/bin/activate
+pip install -e packages/geo-core   # pulls in astral
 python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5
 ```
+
+See [Setup — Night shade buckets](setup.md#night-shade-buckets-after-pulling-tanmay).
 
 Parallel: `SHADE_SEED_WORKERS=0` uses all cores.
 

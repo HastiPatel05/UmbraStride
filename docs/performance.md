@@ -86,10 +86,20 @@ flowchart TB
 
 ### Night routing and cache keys
 
-When the sun is below the horizon at **both** endpoints, shade is forced to **uniform full shade** (S = 1) before weights are built. Coolest and shortest then share the same path. The API sets `sun_below_horizon: true` and uses a separate routing-cache key (`uniform_full_shade`) so day and night buckets do not collide. Warm night hours separately if you demo after dark:
+When the sun is below the horizon at **both** endpoints, shade is forced to **uniform full shade** (S = 1) before weights are built. Coolest and shortest then share the same path. The API sets `sun_below_horizon: true` and uses a separate routing-cache key (`uniform_full_shade`) so day and night buckets do not collide.
+
+**Seed night buckets** (after pulling `tanmay`; requires **astral** via `geo-core`):
 
 ```bash
+git pull origin tanmay
+source .venv/bin/activate
+pip install -e packages/geo-core   # pulls in astral
 python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5
+```
+
+**Warm** (optional, after API is running):
+
+```bash
 curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
   -H "Content-Type: application/json" \
   -d '{"hours": [20, 21, 22, 23, 0, 1, 2, 3, 4, 5]}'

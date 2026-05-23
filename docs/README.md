@@ -47,7 +47,7 @@ Based on [*Walking in the Shade*](https://doi.org/10.1145/3678717.3691287) (SIGS
 |------|-------------------------|---------|
 | 1. Streets | `python scripts/bootstrap_arizona.py --preset az-phoenix` | `data/graphs/az-phoenix.*` |
 | 2. Shade (day) | `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14` | `data/shade-cache/az-phoenix.sqlite` |
-| 2b. Shade (night, optional) | Same script with `--hours 20,21,22,23,0,1,2,3,4,5` | Night buckets in same SQLite file |
+| 2b. Shade (night, optional) | [Pull + seed night hours](setup.md#night-shade-buckets-after-pulling-tanmay) | Night buckets in same SQLite file |
 | 3. Warm (recommended) | API startup or `POST .../routing/warm` | `data/routing-cache/az-phoenix/` |
 
 Full walkthrough: [Setup guide](setup.md) → [Routing performance](performance.md).

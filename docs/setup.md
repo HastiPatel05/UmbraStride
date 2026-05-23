@@ -211,6 +211,19 @@ python scripts/seed_demo_cache.py --aoi az-tucson --hours 10,11,12,13,14
 
 Details: [Arizona coverage](arizona.md).
 
+### Night shade buckets (after pulling `tanmay`)
+
+If you already have Phoenix streets and day shade, pull the latest code, ensure **astral** is installed (used for sun-below-horizon in the seed script), then add **night hours** to the same SQLite file:
+
+```bash
+git pull origin tanmay
+source .venv/bin/activate
+pip install -e packages/geo-core   # pulls in astral
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5
+```
+
+Restart the API (or call `POST /v1/aoi/az-phoenix/routing/warm` with those hours) so in-memory caches pick up the new buckets. See [Day vs night routing](README.md#day-vs-night-routing-important).
+
 ---
 
 ## 6. Run the app
@@ -354,7 +367,7 @@ Use this to confirm a working install:
 |---------|---------|
 | `python scripts/bootstrap_arizona.py --preset az-phoenix` | Download streets |
 | `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14` | Synthetic shade (day) |
-| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5` | Night shade buckets |
+| [Night shade update](setup.md#night-shade-buckets-after-pulling-tanmay) | `git pull origin tanmay` + `pip install -e packages/geo-core` + night seed |
 | `curl -X POST .../routing/warm` | Preload routing cache |
 | `docker compose up` | API + worker + web on :8080 — [Docker](docker.md) |
 | `python scripts/bootstrap_arizona.py --list-presets` | List metros |
