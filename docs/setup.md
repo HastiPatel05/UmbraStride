@@ -353,8 +353,10 @@ Use this to confirm a working install:
 | Command | Purpose |
 |---------|---------|
 | `python scripts/bootstrap_arizona.py --preset az-phoenix` | Download streets |
-| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14` | Synthetic shade |
+| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14` | Synthetic shade (day) |
+| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5` | Night shade buckets |
 | `curl -X POST .../routing/warm` | Preload routing cache |
+| `docker compose up` | API + worker + web on :8080 — [Docker](docker.md) |
 | `python scripts/bootstrap_arizona.py --list-presets` | List metros |
 
 ---

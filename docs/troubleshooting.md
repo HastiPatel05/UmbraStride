@@ -141,7 +141,18 @@ Wait until bootstrap finishes (wide Phoenix can take several minutes).
 
 **Fix:** Try points closer together; verify graph integrity; check API logs for `NetworkXNoPath`.
 
-### All three routes look identical
+### Shortest and coolest differ at night (expected: same)
+
+**Expected:** When the sun is below the horizon at **both** origin and destination, shortest and coolest should be **identical**. Sidebar should mention night / full shade.
+
+**If they still differ at night:**
+
+1. Confirm datetime is truly night at **both** points (not dusk with one point still in daylight).
+2. Re-seed night hours: `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5`
+3. Restart API (clears in-memory cache) or call `POST .../routing/warm`.
+4. Check API response: `sun_below_horizon` should be `true`.
+
+### All three routes look identical (daytime)
 
 **Cause:** **Shade cache miss** — all edges use default shade 0.5, so only distance matters.
 

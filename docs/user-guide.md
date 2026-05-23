@@ -74,6 +74,8 @@ Use the **Date & time** field. This matters because:
 
 **Important:** Shade data must exist for that day/hour. If you see a yellow note about *“nearest cached hour”*, the time you picked does not have exact data; routing still works but may be less accurate. An administrator can run the seed script for your dates (see [Shade cache — Time buckets](shade-cache.md#time-bucket-matching)).
 
+**Night walks:** If the sun is down at **both** your start and end, the app treats every street as fully shaded. **Shortest** and **Coolest** should match (same orange and teal line). A sidebar note explains this. Your **purple** route can still differ if the slider is between Shade and Short. See [Day vs night routing](README.md#day-vs-night-routing-important) in the docs index.
+
 ### 5. Adjust the preference slider
 
 - **Shade** side (left): stronger preference for shady segments.
@@ -91,8 +93,10 @@ Three cards may appear:
 | Card | Meaning |
 |------|---------|
 | **Shortest** | Shortest walking distance; shade not prioritized. Orange line on map. |
-| **Coolest** | Most shade-friendly path; may be longer. Teal line. |
+| **Coolest** | Most shade-friendly path; may be longer. Teal line. At night, same as Shortest. |
 | **Your route** | Path for your slider setting. Purple line. |
+
+If the sun is below the horizon at both points, a note appears under the results: coolest and shortest use the same distance.
 
 Each card shows:
 
@@ -135,15 +139,19 @@ Routes follow **sidewalks and walkable streets** from OpenStreetMap, not straigh
 - **No turn-by-turn GPS navigation** — it shows a path on a map; you follow it yourself.
 - **No real-time weather** — shade comes from cached simulation or demo data, not live clouds.
 - **Not every address on Earth** — only prepared **Arizona metros** (and optional grid tiles).
-- **Shade worker / real ShadeMap cache** — optional; demo seed is synthetic, not measured per building in real time.
+- **Shade worker** — optional batch profiling (`synthetic` without API key, `building-aware` with `SHADEMAP_API_KEY`); demo seed is enough for most local tests.
 
 ---
 
 ## Frequently asked questions
 
-### Why are all three routes the same line?
+### Why are shortest and coolest the same at night?
 
-Usually **shade data is missing** for your selected time, so every street looks equally sunny. Fix: seed the cache for that AOI and date, or pick a datetime that matches seeded hours. See [Troubleshooting — Same routes](troubleshooting.md#all-three-routes-look-identical).
+**Usually correct.** When the sun is below the horizon at both points, every street is treated as fully shaded, so both routes minimize **distance only**. You should see the night note in the sidebar.
+
+### Why are all three routes the same line during the day?
+
+Usually **shade data is missing** for your selected time, so every street looks equally sunny (50% shade default). Fix: seed the cache for that AOI and date. See [Troubleshooting — Same routes](troubleshooting.md#all-three-routes-look-identical).
 
 ### Why does it say “No graph for this area”?
 

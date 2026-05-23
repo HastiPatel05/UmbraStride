@@ -110,6 +110,8 @@ Plain-language definitions for terms used in UmbraStride docs and the app.
 
 **Sun aversion (beta)** — Environment variable `SUN_AVERSION_BETA` (default **5**). Higher values make sunny street segments “cost” more when you prefer shade.
 
+**Sun below horizon** — When the sun has set at a location. If true at **both** route endpoints, UmbraStride uses **uniform full shade** (S = 1) so coolest and shortest paths match. API field: `sun_below_horizon`.
+
 ---
 
 ## T

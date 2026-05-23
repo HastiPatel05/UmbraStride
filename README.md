@@ -24,11 +24,12 @@ UmbraStride builds walkable street networks from [OpenStreetMap](https://www.ope
 ## What you get in the app
 
 - **Shortest route** (orange) — fewest meters; shade ignored.
-- **Coolest route** (teal) — prefers shadier street segments; may be longer.
+- **Coolest route** (teal) — prefers shadier street segments; may be longer. **At night** (sun down at both ends), same path as shortest.
 - **Your route** (purple) — based on the **shade ↔ short** slider.
 - **3D buildings** ([OpenFreeMap](https://openfreemap.org/) + [MapLibre 3D example](https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/)).
 - **Live building shadows** (optional) with a [ShadeMap](https://shademap.app/about/) API key.
 - **Automatic area selection** — no city dropdown; picks the right Arizona metro from map clicks.
+- **Night-aware routing** — when the sun is below the horizon at both ends, coolest and shortest use the **same path** (uniform full shade).
 
 **Default coverage:** [Phoenix metro (wide)](docs/arizona.md) — `az-phoenix`. Smaller downtown graph: `az-phoenix-core`.
 
@@ -38,13 +39,21 @@ UmbraStride builds walkable street networks from [OpenStreetMap](https://www.ope
 
 ```mermaid
 flowchart LR
-  A[You click origin + destination] --> B[App picks Arizona metro AOI]
-  B --> C[Load streets + shade + routing cache]
-  C --> D[Three weighted shortest paths rustworkx]
-  D --> E[Draw routes on map]
+  A[Origin + destination + datetime] --> B[Pick Arizona metro AOI]
+  B --> C{Sun below horizon?}
+  C -->|yes| D[Uniform full shade S=1]
+  C -->|no| E[Load shade from SQLite]
+  D --> F[Weighted paths rustworkx]
+  E --> F
+  F --> G[Shortest + coolest + your route]
 ```
 
-Shade data: SQLite on disk. Routing uses **pickle graph load**, **disk routing cache**, and **rustworkx** for fast paths. See [Routing performance](docs/performance.md).
+| Piece | Role |
+|-------|------|
+| **Shade cache** | SQLite — shade per street × time bucket |
+| **Night rule** | Both endpoints after sunset → all streets equally shady → coolest = shortest |
+| **Performance** | Pickle graphs, disk routing cache, API warm — [docs/performance.md](docs/performance.md) |
+| **Shade worker** | Optional batch profiling (synthetic or building-aware) — [docs/shade-cache.md](docs/shade-cache.md) |
 
 ---
 
@@ -110,8 +119,8 @@ curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
 |------|------|
 | `apps/web` | React + MapLibre UI |
 | `services/api` | FastAPI (`/v1/route`, warm endpoints) |
-| `services/shade-worker` | Optional ShadeMap profiling |
-| `packages/geo-core` | OSM graph ingest, pickle, edge index |
+| `services/shade-worker` | Batch shade `/profile` (synthetic or building-aware) |
+| `packages/geo-core` | OSM graphs, pickle, edge index, solar position (`sun.py`) |
 | `packages/routing-core` | rustworkx routing, shade store, disk cache |
 | `scripts/` | Bootstrap, seed, precompute |
 | `data/` | Graphs, shade cache, routing cache |
@@ -160,9 +169,11 @@ See [docs/configuration.md](docs/configuration.md).
 | Command | Purpose |
 |---------|---------|
 | `python scripts/bootstrap_arizona.py --preset az-phoenix` | Download walk streets |
-| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14` | Synthetic shade |
+| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14` | Synthetic shade (day); night hours get uniform full shade |
+| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5` | Night shade buckets |
 | `POST /v1/aoi/az-phoenix/routing/warm` | Preload routing cache |
-| `npm run dev:web` | Web :5173 |
+| `docker compose up` | API + worker + web — [docs/docker.md](docs/docker.md) |
+| `npm run dev:web` | Web dev server :5173 |
 
 ---
 

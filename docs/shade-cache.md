@@ -77,6 +77,12 @@ python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date
 python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14
 ```
 
+**Night hours** (optional — same script, uniform full shade when sun is below horizon):
+
+```bash
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5
+```
+
 Parallel: `SHADE_SEED_WORKERS=0` uses all cores.
 
 ### Batch precompute (shade worker)

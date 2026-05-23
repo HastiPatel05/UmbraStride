@@ -121,6 +121,8 @@ weight  = α * L + (1 - α) * (L_sun * β + L_shade)
 
 Dijkstra / A* minimizes sum of weights.
 
+**Night (sun below horizon at both endpoints):** `umbrastride_geo.sun.is_route_at_night()` forces shade fraction **S = 1** on every edge before building weights. Coolest and shortest then both minimize distance only. Response includes `sun_below_horizon: true`. Seed and shade-worker synthetic modes apply the same rule when profiling at night.
+
 **Parallel edges** collapse to one directed edge per `(u,v)` with minimum weight per α; **route_payloads** keep α-specific metrics for geometry/metrics on the winning parallel edge.
 
 See [Paper mapping](paper-mapping.md).

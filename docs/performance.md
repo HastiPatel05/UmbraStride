@@ -84,6 +84,19 @@ flowchart TB
 
 **On-disk (L1)** — survives API restart; rebuilt when source files change.
 
+### Night routing and cache keys
+
+When the sun is below the horizon at **both** endpoints, shade is forced to **uniform full shade** (S = 1) before weights are built. Coolest and shortest then share the same path. The API sets `sun_below_horizon: true` and uses a separate routing-cache key (`uniform_full_shade`) so day and night buckets do not collide. Warm night hours separately if you demo after dark:
+
+```bash
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5
+curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
+  -H "Content-Type: application/json" \
+  -d '{"hours": [20, 21, 22, 23, 0, 1, 2, 3, 4, 5]}'
+```
+
+Details: [Shade cache — weights](shade-cache.md#how-shade-affects-weights).
+
 ---
 
 ## Step-by-step: full performance setup (Phoenix metro)
