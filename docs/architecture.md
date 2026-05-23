@@ -64,7 +64,7 @@ Startup (when `ROUTING_WARM_ON_STARTUP=1`): same load/build path for `DEFAULT_AO
 | `packages/routing-core` | Python | Shade SQLite, NumPy graph build, disk cache, rustworkx pathfind, LRU caches |
 | `packages/shade-engine` | TypeScript | Shared types for shade worker |
 | `services/api` | Python | FastAPI REST, startup warm, routing warm endpoint |
-| `services/shade-worker` | TypeScript | ShadeMap batch `/profile` (mock or real) |
+| `services/shade-worker` | TypeScript | Batch `/profile` (synthetic or building-aware via Overpass) |
 | `apps/web` | TypeScript | React, MapLibre, OpenFreeMap 3D, ShadeMap overlay |
 
 ---
@@ -181,11 +181,14 @@ Full walkthrough: [Routing performance](performance.md).
 
 ---
 
-## Not implemented (v1)
+## Deployment
 
-- Production-hardened Playwright ShadeMap worker.
-- Docker images on all branches.
-- Single statewide graph.
+Dockerfiles and [Docker guide](docker.md) for API, web (nginx), and shade-worker.
+
+## Future work
+
+- Full ShadeMap Playwright / `mapbox-gl-shadow-simulator` batch profiling in headless browser.
+- Single statewide graph (use metro presets or tiles instead).
 - Native mobile apps.
 
 ---

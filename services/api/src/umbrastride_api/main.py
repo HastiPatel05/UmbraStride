@@ -88,6 +88,10 @@ class RouteRequest(BaseModel):
 class CacheWarmRequest(BaseModel):
     datetime: str
     edge_keys: list[str] | None = None
+    persist_sample: bool = Field(
+        default=False,
+        description="If true, write sampled edge shade fractions to SQLite for this bucket",
+    )
 
 
 class RoutingWarmRequest(BaseModel):
@@ -179,9 +183,9 @@ async def cache_warm(aoi_id: str, body: CacheWarmRequest):
     dt = datetime.fromisoformat(body.datetime.replace("Z", "+00:00"))
     ts_bucket = floor_ts_bucket(dt)
 
-    points = []
     from umbrastride_geo.graph import edge_key, iter_edges
 
+    edge_points: list[tuple[str, dict]] = []
     for u, v, k, length, geom in iter_edges(G):
         ek = edge_key(u, v, k)
         if body.edge_keys and ek not in body.edge_keys:
@@ -189,13 +193,13 @@ async def cache_warm(aoi_id: str, body: CacheWarmRequest):
         if geom is None:
             continue
         mid = geom.interpolate(0.5, normalized=True)
-        points.append({"lng": mid.x, "lat": mid.y})
+        edge_points.append((ek, {"lng": mid.x, "lat": mid.y}))
 
-    if not points:
+    if not edge_points:
         return {"status": "no_points", "ts_bucket": ts_bucket}
 
-    # sample subset for warm ping
-    sample = points[: min(200, len(points))]
+    sample_pairs = edge_points[: min(200, len(edge_points))]
+    sample = [p for _ek, p in sample_pairs]
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
             resp = await client.post(
@@ -203,13 +207,30 @@ async def cache_warm(aoi_id: str, body: CacheWarmRequest):
                 json={"points": sample, "datetime": body.datetime},
             )
             resp.raise_for_status()
+            payload = resp.json()
         except httpx.HTTPError as e:
             raise HTTPException(502, f"shade-worker unavailable: {e}") from e
+
+    persisted_edges = 0
+    if body.persist_sample:
+        store = ShadeStore(aoi_id)
+        rows = []
+        results = payload.get("results") or []
+        for i, (ek, _pt) in enumerate(sample_pairs):
+            if i >= len(results):
+                break
+            sf = 0.85 if results[i].get("inShade") else 0.15
+            rows.append((ek, ts_bucket, sf, 1))
+        if rows:
+            store.bulk_set(rows)
+            persisted_edges = len(rows)
 
     return {
         "status": "worker_ok",
         "ts_bucket": ts_bucket,
         "sampled_points": len(sample),
+        "worker_mode": payload.get("mode"),
+        "persisted_edges": persisted_edges,
         "hint": "Run scripts/precompute_shade.py for full edge cache",
     }
 

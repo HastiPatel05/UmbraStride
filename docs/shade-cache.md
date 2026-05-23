@@ -79,12 +79,12 @@ python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14
 
 Parallel: `SHADE_SEED_WORKERS=0` uses all cores.
 
-### Production (ShadeMap + worker)
+### Batch precompute (shade worker)
 
 1. Sample points along each edge geometry.  
-2. ShadeMap profile via worker.  
-3. `shade_fraction = shaded_points / N`.  
-4. Bulk insert SQLite.
+2. Worker `/profile` at datetime `t`.  
+3. **With `SHADEMAP_API_KEY`:** building-aware (Overpass + SunCalc). **Without:** synthetic (matches seed script).  
+4. `shade_fraction = shaded_points / N` → SQLite via `precompute_shade.py`.
 
 ```bash
 npm run dev:worker
@@ -212,10 +212,10 @@ GET /v1/aoi/az-phoenix/cache/coverage?ts_bucket=2026-05-22T12:00
 POST /v1/aoi/az-phoenix/cache/warm
 Content-Type: application/json
 
-{"datetime": "2026-05-22T12:00:00Z"}
+{"datetime": "2026-05-22T12:00:00Z", "persist_sample": false}
 ```
 
-Up to 200 sample points — not full precompute.
+Up to 200 sample points. Set `"persist_sample": true` to write those edges into SQLite (partial bucket).
 
 ### Routing warm (preload graph + routing cache)
 

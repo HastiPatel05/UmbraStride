@@ -15,6 +15,7 @@ Welcome. This folder explains **what UmbraStride is**, **how to install and run 
 | **Understand words** (AOI, alpha, shade cache…) | [Glossary](glossary.md) |
 | **Change settings** (.env files) | [Configuration](configuration.md) |
 | **Call the HTTP API** | [API reference](api.md) |
+| **Run with Docker** | [Docker guide](docker.md) |
 | **Learn how the code is organized** | [Architecture](architecture.md) |
 | **Work with Arizona / Phoenix data** | [Arizona coverage](arizona.md) |
 | **Understand shade storage** | [Shade cache](shade-cache.md) |

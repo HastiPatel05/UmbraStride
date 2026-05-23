@@ -251,7 +251,7 @@ npm run dev:web
 
 Open **http://localhost:5173**
 
-### Terminal 3 — Shade doc worker (optional)
+### Terminal 3 — Shade worker (optional)
 
 Only for `precompute_shade.py` or shade `cache/warm` — not required for demo seed.
 
@@ -359,12 +359,24 @@ Use this to confirm a working install:
 
 ---
 
+## Optional: Docker Compose
+
+```bash
+docker compose build
+docker compose up
+```
+
+Open http://localhost:8080 — full guide: [Docker](docker.md).
+
+---
+
 ## More documentation
 
 | Doc | Topic |
 |-----|--------|
 | [Documentation index](README.md) | All guides |
 | [Routing performance](performance.md) | Caches, warm, disk artifacts |
+| [Docker guide](docker.md) | Container deployment |
 | [User guide](user-guide.md) | Using the map |
 | [Troubleshooting](troubleshooting.md) | Fixes |
 | [Configuration](configuration.md) | Env vars |

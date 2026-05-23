@@ -23,6 +23,8 @@ cache/
 data/raw/
 data/graphs/
 data/shade-cache/
+data/routing-cache/
+*.graph.pkl
 *.sqlite
 *.db
 

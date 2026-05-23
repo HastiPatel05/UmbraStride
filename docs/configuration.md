@@ -35,7 +35,7 @@ Copy from [`.env.example`](../.env.example).
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `SHADE_WORKER_URL` | `http://127.0.0.1:3001` | URL of `services/shade-worker` for cache warm / precompute. |
-| `SHADE_WORKER_CONCURRENCY` | `2` | Parallel browser jobs in the worker (if supported). |
+| `SHADE_WORKER_CONCURRENCY` | `2` | Parallel in-flight `/profile` requests in shade-worker. |
 
 ### Routing behavior
 

@@ -134,6 +134,7 @@ curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
 | [docs/shade-cache.md](docs/shade-cache.md) | Shade storage |
 | [docs/api.md](docs/api.md) | HTTP API reference |
 | [docs/architecture.md](docs/architecture.md) | System design |
+| [docs/docker.md](docs/docker.md) | Docker Compose deployment |
 
 ---
 

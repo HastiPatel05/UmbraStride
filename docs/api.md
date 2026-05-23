@@ -147,11 +147,15 @@ Ping shade worker with a sample of edge midpoints (does not full precompute).
 ```json
 {
   "datetime": "2026-05-22T12:00:00Z",
-  "edge_keys": null
+  "edge_keys": null,
+  "persist_sample": false
 }
 ```
 
-`edge_keys`: optional list to limit edges; `null` = sample up to 200 points.
+| Field | Description |
+|-------|-------------|
+| `edge_keys` | Optional list to limit edges; `null` = sample up to 200 points |
+| `persist_sample` | If `true`, write sampled edge shade rows to SQLite for this bucket |
 
 **Response:**
 
