@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 from datetime import datetime
 from typing import Any
@@ -93,9 +94,41 @@ def _route_metrics(G: nx.MultiDiGraph, path: list, ts_bucket: str, store: ShadeS
     return {"distance_m": round(dist, 1), "shade_fraction": round(shade_fraction, 3)}
 
 
-def _dijkstra_path(H: nx.MultiDiGraph, origin, dest) -> list | None:
+def _great_circle_m(lng1: float, lat1: float, lng2: float, lat2: float) -> float:
+    radius_m = 6_371_009.0
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lam = math.radians(lng2 - lng1)
+    a = (
+        math.sin(d_phi / 2.0) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(d_lam / 2.0) ** 2
+    )
+    return radius_m * 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+
+
+def _heuristic_weight_floor(alpha: float) -> float:
+    beta = float(os.environ.get("SUN_AVERSION_BETA", "2.0"))
+    return min(1.0, alpha + (1.0 - alpha) * beta)
+
+
+def _astar_path(H: nx.MultiDiGraph, origin, dest, alpha: float) -> list | None:
+    dest_data = H.nodes[dest]
+    dest_x = float(dest_data["x"])
+    dest_y = float(dest_data["y"])
+    weight_floor = _heuristic_weight_floor(alpha)
+
+    def heuristic(node, _target) -> float:
+        data = H.nodes[node]
+        if data.get("x") is None or data.get("y") is None:
+            return 0.0
+        return (
+            _great_circle_m(float(data["x"]), float(data["y"]), dest_x, dest_y)
+            * weight_floor
+        )
+
     try:
-        return nx.shortest_path(H, origin, dest, weight="weight")
+        return nx.astar_path(H, origin, dest, heuristic=heuristic, weight="weight")
     except nx.NetworkXNoPath:
         return None
 
@@ -133,7 +166,7 @@ def compute_routes(
 
     for a in alpha_list:
         H = _build_weighted_graph(G, store, ts_bucket, a)
-        path = _dijkstra_path(H, origin_node, dest_node)
+        path = _astar_path(H, origin_node, dest_node, a)
         if path is None:
             continue
         metrics = _route_metrics(G, path, ts_bucket, store)
