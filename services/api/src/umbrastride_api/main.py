@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
@@ -22,12 +23,39 @@ from umbrastride_geo import (
     presets_containing_both,
 )
 from umbrastride_geo.regions import bbox_to_str, estimate_tile_count, get_preset, iter_tile_bboxes
-from umbrastride_routing import ShadeStore, compute_routes
+from umbrastride_routing import ShadeStore, compute_routes, warm_routing_cache
 from umbrastride_routing.shade_store import floor_ts_bucket
 
 load_dotenv()
 
-app = FastAPI(title="UmbraStride API", version="0.1.0")
+
+def _startup_warm_routing() -> None:
+    if os.environ.get("ROUTING_WARM_ON_STARTUP", "1").strip().lower() in (
+        "0",
+        "false",
+        "no",
+        "off",
+    ):
+        return
+    aoi_id = os.environ.get("DEFAULT_AOI_ID", "az-phoenix").strip()
+    if not aoi_id:
+        return
+    try:
+        warm_routing_cache(aoi_id)
+    except FileNotFoundError:
+        pass
+    except Exception:
+        # Warm is best-effort; routing still works on first request.
+        pass
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    _startup_warm_routing()
+    yield
+
+
+app = FastAPI(title="UmbraStride API", version="0.1.0", lifespan=_lifespan)
 
 _origins = os.environ.get(
     "API_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
@@ -60,6 +88,12 @@ class RouteRequest(BaseModel):
 class CacheWarmRequest(BaseModel):
     datetime: str
     edge_keys: list[str] | None = None
+
+
+class RoutingWarmRequest(BaseModel):
+    datetime: str | None = None
+    hours: list[int] | None = None
+    alphas: list[float] | None = None
 
 
 class BootstrapRequest(BaseModel):
@@ -178,6 +212,36 @@ async def cache_warm(aoi_id: str, body: CacheWarmRequest):
         "sampled_points": len(sample),
         "hint": "Run scripts/precompute_shade.py for full edge cache",
     }
+
+
+@app.post("/v1/aoi/{aoi_id}/routing/warm")
+def routing_warm(aoi_id: str, body: RoutingWarmRequest | None = None):
+    """Preload street graph, shade arrays, and routing DiGraph into memory/disk cache."""
+    from datetime import timezone
+
+    body = body or RoutingWarmRequest()
+    buckets: list[str] = []
+    if body.datetime:
+        dt = datetime.fromisoformat(body.datetime.replace("Z", "+00:00"))
+        buckets.append(floor_ts_bucket(dt))
+    if body.hours:
+        now = datetime.now(timezone.utc)
+        for hour in body.hours:
+            buckets.append(
+                floor_ts_bucket(now.replace(hour=hour, minute=0, second=0, microsecond=0))
+            )
+    buckets = list(dict.fromkeys(buckets)) or None
+
+    try:
+        result = warm_routing_cache(
+            aoi_id,
+            ts_buckets=buckets,
+            alphas=body.alphas,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+
+    return {"status": "warmed", **result}
 
 
 @app.post("/v1/route")

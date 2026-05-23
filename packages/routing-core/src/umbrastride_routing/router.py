@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any
 
@@ -9,50 +8,14 @@ import networkx as nx
 from shapely.geometry import LineString, mapping
 from shapely.ops import linemerge
 
-from umbrastride_geo.graph import snap_point_to_graph
+from umbrastride_geo.graph import geometry_for_edge_key, snap_point_to_graph
 from umbrastride_routing.cache import get_graph, get_routing_graph_for_alphas
-from umbrastride_routing.cpu import worker_count
 from umbrastride_routing.graph_build import alpha_weight_key as _alpha_weight_key
+from umbrastride_routing.pathfind import corridor_subgraph, run_shortest_paths_batch
 from umbrastride_routing.shade_store import floor_ts_bucket
 from umbrastride_routing.weights import edge_weight  # noqa: F401 — re-exported via __init__
 
 _LOCAL_MARGIN_DEG = float(os.environ.get("ROUTING_LOCAL_MARGIN_DEG", "0.012"))
-
-
-def _dijkstra_workers() -> int:
-    if os.environ.get("ROUTING_DIJKSTRA_WORKERS", "").strip() not in ("", "0"):
-        return worker_count("ROUTING_DIJKSTRA_WORKERS", minimum=1)
-    return worker_count("UMBRASTIDE_CPU_WORKERS", minimum=1, cap=32)
-
-
-def _path_geometry(G: nx.MultiDiGraph, path: list) -> dict[str, Any] | None:
-    lines = []
-    for i in range(len(path) - 1):
-        u, v = path[i], path[i + 1]
-        if not G.has_edge(u, v):
-            continue
-        edges = G[u][v]
-        data = edges[min(edges.keys())]
-        if data.get("geometry") is not None:
-            lines.append(data["geometry"])
-        elif G.nodes[u].get("x") is not None:
-            lines.append(
-                LineString(
-                    [
-                        (G.nodes[u]["x"], G.nodes[u]["y"]),
-                        (G.nodes[v]["x"], G.nodes[v]["y"]),
-                    ]
-                )
-            )
-    if not lines:
-        return None
-    merged = linemerge(lines)
-    if merged.geom_type == "LineString":
-        return mapping(merged)
-    if merged.geom_type == "MultiLineString":
-        longest = max(merged.geoms, key=lambda g: g.length)
-        return mapping(longest)
-    return None
 
 
 def _edge_route_payload(data: dict[str, Any], weight_attr: str) -> dict[str, Any]:
@@ -60,7 +23,10 @@ def _edge_route_payload(data: dict[str, Any], weight_attr: str) -> dict[str, Any
 
 
 def _path_geometry_from_digraph(
-    D: nx.DiGraph, path: list, weight_attr: str
+    walk_graph: nx.MultiDiGraph,
+    D: nx.DiGraph,
+    path: list,
+    weight_attr: str,
 ) -> dict[str, Any] | None:
     lines = []
     for i in range(len(path) - 1):
@@ -68,8 +34,10 @@ def _path_geometry_from_digraph(
         if not D.has_edge(u, v):
             continue
         data = _edge_route_payload(D[u][v], weight_attr)
-        if data.get("geometry") is not None:
-            lines.append(data["geometry"])
+        ek = data.get("edge_key")
+        geom = geometry_for_edge_key(walk_graph, ek) if ek else None
+        if geom is not None:
+            lines.append(geom)
         elif D.nodes[u].get("x") is not None:
             lines.append(
                 LineString(
@@ -106,70 +74,17 @@ def _route_metrics_digraph(D: nx.DiGraph, path: list, weight_attr: str) -> dict:
     return {"distance_m": round(dist, 1), "shade_fraction": round(shade_fraction, 3)}
 
 
-def _local_subgraph(D: nx.DiGraph, origin, dest, margin_deg: float) -> nx.DiGraph:
-    if origin not in D or dest not in D:
-        return D
-    ox, oy = float(D.nodes[origin]["x"]), float(D.nodes[origin]["y"])
-    dx, dy = float(D.nodes[dest]["x"]), float(D.nodes[dest]["y"])
-    west = min(ox, dx) - margin_deg
-    east = max(ox, dx) + margin_deg
-    south = min(oy, dy) - margin_deg
-    north = max(oy, dy) + margin_deg
-    keep = [
-        n
-        for n, data in D.nodes(data=True)
-        if data.get("x") is not None
-        and west <= float(data["x"]) <= east
-        and south <= float(data["y"]) <= north
-    ]
-    if origin not in keep:
-        keep.append(origin)
-    if dest not in keep:
-        keep.append(dest)
-    return D.subgraph(keep).copy()
-
-
-def _dijkstra(D: nx.DiGraph, origin, dest, weight_attr: str) -> list | None:
-    try:
-        return nx.shortest_path(D, origin, dest, weight=weight_attr)
-    except nx.NetworkXNoPath:
-        return None
-
-
-def _run_dijkstra_batch(
-    D: nx.DiGraph,
-    origin_node,
-    dest_node,
-    alpha_list: list[float],
-) -> dict[float, list | None]:
-    workers = min(_dijkstra_workers(), len(alpha_list))
-
-    def one(alpha: float) -> tuple[float, list | None]:
-        wkey = _alpha_weight_key(alpha)
-        return alpha, _dijkstra(D, origin_node, dest_node, wkey)
-
-    if len(alpha_list) <= 1 or workers <= 1:
-        return dict(one(a) for a in alpha_list)
-
-    out: dict[float, list | None] = {}
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(one, a): a for a in alpha_list}
-        for fut in as_completed(futures):
-            alpha, path = fut.result()
-            out[alpha] = path
-    return out
-
-
 def _build_route_result(
     a: float,
     path: list,
+    walk_graph: nx.MultiDiGraph,
     D: nx.DiGraph,
     ts_bucket: str,
     shortest_dist: float | None,
 ) -> tuple[dict, float | None]:
     weight_attr = _alpha_weight_key(a)
     metrics = _route_metrics_digraph(D, path, weight_attr)
-    geom = _path_geometry_from_digraph(D, path, weight_attr)
+    geom = _path_geometry_from_digraph(walk_graph, D, path, weight_attr)
     label = "custom"
     if a >= 0.999:
         label = "shortest"
@@ -225,8 +140,8 @@ def compute_routes(
     D, shade_ts_bucket, shade_cache_exact = get_routing_graph_for_alphas(
         aoi_id, ts_bucket, alpha_list
     )
-    D_local = _local_subgraph(D, origin_node, dest_node, _LOCAL_MARGIN_DEG)
-    paths_by_alpha = _run_dijkstra_batch(D_local, origin_node, dest_node, alpha_list)
+    D_local = corridor_subgraph(D, origin_node, dest_node, _LOCAL_MARGIN_DEG)
+    paths_by_alpha = run_shortest_paths_batch(D_local, origin_node, dest_node, alpha_list)
 
     routes = []
     shortest_dist = None
@@ -234,7 +149,7 @@ def compute_routes(
         path = paths_by_alpha.get(a)
         if path is None:
             continue
-        route, shortest_dist = _build_route_result(a, path, D, ts_bucket, shortest_dist)
+        route, shortest_dist = _build_route_result(a, path, G, D, ts_bucket, shortest_dist)
         routes.append(route)
 
     return {

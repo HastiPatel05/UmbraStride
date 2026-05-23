@@ -44,13 +44,15 @@ Plain-language definitions for terms used in UmbraStride docs and the app.
 
 **Edge** — One street segment in the graph (between two intersections). Shade is stored **per edge**.
 
-**Edge key** — A unique ID for one directed street segment in the graph, used in the shade database.
+**Edge key** — Unique ID for one directed street segment, e.g. `123|456|0`. Used in shade SQLite and for geometry lookup on the final path.
+
+**Edge index** — File `data/graphs/{aoi}.edge-index.json` listing all edge keys in order so shade loads as a fast numeric array.
 
 ---
 
 ## G
 
-**Graph (street graph)** — All walkable street pieces and how they connect. Stored as GraphML under `data/graphs/{aoi_id}.graphml`.
+**Graph (street graph)** — Walkable streets and connections. Stored as GraphML; fast reload via `graph.pkl`.
 
 ---
 
@@ -74,15 +76,23 @@ Plain-language definitions for terms used in UmbraStride docs and the app.
 
 ## P
 
+**Pickle graph (`graph.pkl`)** — A binary copy of the street graph saved next to GraphML. The API loads this first because it is much faster than parsing XML.
+
 **Preset** — Same idea as a metro AOI (e.g. `az-phoenix`). See [Arizona coverage](arizona.md).
 
 ---
 
 ## R
 
-**Render height** — Building height property from map tiles, used to draw 3D blocks and shadow simulation.
+**Render height** — Building height from map tiles for 3D blocks and shadow simulation.
 
-**Route** — An ordered path along streets from origin to destination, with distance and average shade statistics.
+**Routing cache** — Files under `data/routing-cache/{aoi}/` storing a pre-built weighted street graph for a shade time bucket. Avoids rebuilding on every cold API start.
+
+**Routing warm** — Preloading graph + shade + routing cache via API startup or `POST /v1/aoi/{id}/routing/warm`. See [Routing performance](performance.md).
+
+**Route** — Path along streets from origin to destination with distance and shade statistics.
+
+**rustworkx** — Fast graph library (Rust) used for shortest-path when `ROUTING_PATH_ENGINE=rustworkx`.
 
 ---
 

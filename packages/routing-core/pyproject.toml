@@ -6,6 +6,8 @@ requires-python = ">=3.11"
 dependencies = [
     "networkx>=3.2",
     "numpy>=1.26",
+    "rustworkx>=0.15",
+    "umbrastride-geo-core",
 ]
 
 [project.optional-dependencies]

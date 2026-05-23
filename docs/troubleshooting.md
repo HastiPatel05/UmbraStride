@@ -158,9 +158,46 @@ Wait until bootstrap finishes (wide Phoenix can take several minutes).
 
 ### Routes very slow first time, then OK
 
-**Cause:** Cold load—GraphML + SQLite + graph build.
+**Cause:** Cold load — GraphML parse, shade load, routing graph build, or first-time write to `data/routing-cache/`.
 
-**Fix:** Normal on first request for `az-phoenix`. Keep API running; subsequent requests use memory cache (~sub-second on many machines).
+**Fix:**
+
+1. Enable warm in `.env`:
+   ```env
+   ROUTING_WARM_ON_STARTUP=1
+   ROUTING_WARM_HOURS=10,11,12,13,14
+   ROUTING_DISK_CACHE=1
+   ```
+2. After API starts, run manual warm:
+   ```bash
+   curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
+     -H "Content-Type: application/json" \
+     -d '{"hours": [10, 11, 12, 13, 14]}'
+   ```
+3. Verify: `ls data/routing-cache/az-phoenix/` should show `*.routing.pkl`.
+4. Keep API running between clicks (RAM cache). Dev `--reload` restarts process and clears RAM.
+
+Full guide: [Routing performance](performance.md).
+
+### API startup seems to hang
+
+**Cause:** Startup warm building routing cache for `az-phoenix` (large graph).
+
+**Fix:** Wait for first warm to finish, or temporarily set `ROUTING_WARM_ON_STARTUP=0`, start API, then call `POST .../routing/warm` manually. Use `az-phoenix-core` for faster dev.
+
+### ImportError: rustworkx
+
+**Cause:** Routing package dependency not installed.
+
+**Fix:**
+```bash
+source .venv/bin/activate
+pip install rustworkx
+# or reinstall routing-core
+pip install -e "packages/routing-core[dev]"
+```
+
+Or set `ROUTING_PATH_ENGINE=networkx` in `.env` (slower).
 
 ### Shade note: “nearest cached hour”
 
@@ -227,6 +264,12 @@ curl http://127.0.0.1:8000/v1/regions/arizona | python3 -m json.tool
 # Cache coverage
 curl "http://127.0.0.1:8000/v1/aoi/az-phoenix/cache/coverage"
 
-# List graphs on disk
+# Warm routing cache
+curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
+  -H "Content-Type: application/json" \
+  -d '{"hours": [10, 11, 12, 13, 14]}'
+
+# List graphs and caches on disk
 ls -la data/graphs/
+ls -la data/routing-cache/az-phoenix/ 2>/dev/null || echo "routing cache not built yet"
 ```

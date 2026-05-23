@@ -5,7 +5,7 @@ from typing import Any
 import networkx as nx
 import numpy as np
 
-from umbrastride_geo.graph import edge_key, iter_edges
+from umbrastride_geo.edges import edge_key, iter_edges
 
 
 def alpha_weight_key(alpha: float) -> str:
@@ -27,47 +27,71 @@ def _weight_matrix(lengths: np.ndarray, shade: np.ndarray, alphas: list[float]) 
     a = np.clip(a, 0.0, 1.0)
     sun = l * (1.0 - s)
     shade_len = l * s
-    # (n_edges, n_alphas)
     w = a * l[:, None] + (1.0 - a) * (sun[:, None] * beta + shade_len[:, None])
     return {alpha_weight_key(al): w[:, i] for i, al in enumerate(alphas)}
 
 
+def _shade_value(
+    ek: str,
+    edge_index: int | None,
+    shade_map: dict[str, float] | None,
+    shade_array: np.ndarray | None,
+    default_shade: float,
+) -> float:
+    if shade_array is not None and edge_index is not None and 0 <= edge_index < len(shade_array):
+        return float(shade_array[edge_index])
+    if shade_map is not None:
+        return float(shade_map.get(ek, default_shade))
+    return default_shade
+
+
 def build_routing_digraph(
     G: nx.MultiDiGraph,
-    shade_map: dict[str, float],
+    shade: dict[str, float] | np.ndarray,
     alphas: list[float],
     *,
+    edge_key_to_index: dict[str, int] | None = None,
     default_shade: float = 0.5,
 ) -> nx.DiGraph:
-    """Collapse parallel edges; compute all alpha weights (vectorized NumPy/BLAS)."""
+    """
+    Collapse parallel edges; compute all alpha weights (vectorized NumPy/BLAS).
+
+    Geometry is omitted from edge payloads — resolve via ``geometry_for_edge_key`` on the walk graph.
+    """
     D = nx.DiGraph()
     D.add_nodes_from(G.nodes(data=True))
     wkeys = [alpha_weight_key(a) for a in alphas]
 
-    rows: list[tuple[Any, Any, float, Any, str, float]] = []
-    for u, v, k, length, geom in iter_edges(G):
+    shade_map: dict[str, float] | None
+    shade_array: np.ndarray | None
+    if isinstance(shade, np.ndarray):
+        shade_array = shade
+        shade_map = None
+    else:
+        shade_array = None
+        shade_map = shade
+
+    rows: list[tuple[Any, Any, float, str, int | None, float]] = []
+    for u, v, k, length, _geom in iter_edges(G):
         ek = edge_key(u, v, k)
-        sf = shade_map.get(ek, default_shade)
-        rows.append((u, v, length, geom, ek, sf))
+        idx = edge_key_to_index.get(ek) if edge_key_to_index else None
+        sf = _shade_value(ek, idx, shade_map, shade_array, default_shade)
+        rows.append((u, v, length, ek, idx, sf))
 
     if not rows:
         return D
 
     lengths = np.fromiter((r[2] for r in rows), dtype=np.float64, count=len(rows))
-    shade = np.fromiter((r[5] for r in rows), dtype=np.float64, count=len(rows))
-    w_by_key = _weight_matrix(lengths, shade, alphas)
+    shade_vals = np.fromiter((r[5] for r in rows), dtype=np.float64, count=len(rows))
+    w_by_key = _weight_matrix(lengths, shade_vals, alphas)
 
-    for i, (u, v, length, geom, ek, sf) in enumerate(rows):
+    for i, (u, v, length, ek, _idx, sf) in enumerate(rows):
         route_payload: dict[str, Any] = {
             "length_m": length,
             "shade_fraction": sf,
             "edge_key": ek,
-            "geometry": geom,
         }
-        payload: dict[str, Any] = {
-            **route_payload,
-            "route_payloads": {},
-        }
+        payload: dict[str, Any] = {"route_payloads": {}}
         for wk in wkeys:
             payload[wk] = float(w_by_key[wk][i])
             payload["route_payloads"][wk] = route_payload
@@ -77,8 +101,6 @@ def build_routing_digraph(
                 if payload[wk] < cur[wk]:
                     cur[wk] = payload[wk]
                     cur.setdefault("route_payloads", {})[wk] = route_payload
-            if geom is not None and cur.get("geometry") is None:
-                cur["geometry"] = geom
         else:
             D.add_edge(u, v, **payload)
     return D

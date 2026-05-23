@@ -85,6 +85,8 @@ Creates:
 
 - `data/graphs/az-phoenix.graphml`
 - `data/graphs/az-phoenix.meta.json`
+- `data/graphs/az-phoenix.graph.pkl` (fast reload)
+- `data/graphs/az-phoenix.edge-index.json` (shade vectorization)
 
 **Time / size:** `az-phoenix-core` ≈ minutes / tens of MB; `az-phoenix` ≈ longer / larger.
 
@@ -96,7 +98,20 @@ python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14
 
 Creates `data/shade-cache/az-phoenix.sqlite`.
 
-Without seed, routes may all look **identical** (no shade variation). See [Troubleshooting](troubleshooting.md).
+### Step 3 — Warm routing cache (recommended)
+
+After API is running:
+
+```bash
+curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
+  -H "Content-Type: application/json" \
+  -d '{"hours": [10, 11, 12, 13, 14]}'
+```
+
+Or set `ROUTING_WARM_ON_STARTUP=1` in `.env` so the API warms on boot.  
+Creates `data/routing-cache/az-phoenix/*.routing.pkl`.
+
+See [Routing performance](performance.md).
 
 ### One-command helpers
 

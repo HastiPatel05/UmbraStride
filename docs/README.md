@@ -1,6 +1,6 @@
 # UmbraStride documentation
 
-Welcome. This folder explains **what UmbraStride is**, **how to use it**, and **how it works**—whether you write code or just want cooler walking routes in Arizona.
+Welcome. This folder explains **what UmbraStride is**, **how to install and run it**, **how to make routing fast**, and **how the code works**—for both everyday users and developers.
 
 ---
 
@@ -10,74 +10,93 @@ Welcome. This folder explains **what UmbraStride is**, **how to use it**, and **
 |------------|-----------|
 | **Use the web app** (click map, get routes) | [User guide](user-guide.md) |
 | **Install and run** on my computer | [Setup guide](setup.md) |
+| **Make routing fast** (caches, warm, disk artifacts) | [**Routing performance**](performance.md) |
 | **Fix something broken** | [Troubleshooting](troubleshooting.md) |
 | **Understand words** (AOI, alpha, shade cache…) | [Glossary](glossary.md) |
 | **Change settings** (.env files) | [Configuration](configuration.md) |
 | **Call the HTTP API** | [API reference](api.md) |
 | **Learn how the code is organized** | [Architecture](architecture.md) |
 | **Work with Arizona / Phoenix data** | [Arizona coverage](arizona.md) |
-| **Understand shade storage & performance** | [Shade cache](shade-cache.md) |
+| **Understand shade storage** | [Shade cache](shade-cache.md) |
 | **See how this relates to the research paper** | [Paper mapping](paper-mapping.md) |
 
 ---
 
 ## What is UmbraStride? (30 seconds)
 
-UmbraStride helps you plan **walking routes that balance shade and distance**. On a map you set **where you start** and **where you want to go**, pick **date and time** (sun position matters), and adjust a slider between **“stay in shade”** and **“shortest walk”**.
+UmbraStride plans **walking routes that balance shade and distance**. Set **start** and **end** on a map, pick **date and time**, and adjust a slider between **shade** and **shortest walk**.
 
 The app shows up to **three routes**:
 
-- **Shortest** — fewest meters, shade ignored.
-- **Coolest** — prefers shady sidewalks and streets.
-- **Your route** — your slider choice in between.
+| Color | Route | Meaning |
+|-------|-------|---------|
+| Orange | Shortest | Fewest meters; shade ignored |
+| Teal | Coolest | Prefers shady streets |
+| Purple | Your route | Your slider preference |
 
-Behind the scenes it uses **OpenStreetMap** street data, **estimated shade** along each street (cached per time of day), and a standard **shortest-path** algorithm with custom weights—not magic, but the same idea as the [*Walking in the Shade*](https://doi.org/10.1145/3678717.3691287) research paper (SIGSPATIAL 2024).
+It uses **OpenStreetMap** streets, **cached shade** per time of day, and **shortest-path** routing with custom weights — based on [*Walking in the Shade*](https://doi.org/10.1145/3678717.3691287) (SIGSPATIAL 2024).
 
 ---
 
 ## What you need before routing works
 
-Routing is **not** global by default. Your computer must have **prepared data** for the area you click:
+Routing is **not** global by default. Your machine needs **prepared data** for the area you click:
 
-1. A **street network** file (downloaded once per metro area).
-2. A **shade cache** file (synthetic demo data is enough to start).
+| Step | Command (Phoenix metro) | Creates |
+|------|-------------------------|---------|
+| 1. Streets | `python scripts/bootstrap_arizona.py --preset az-phoenix` | `data/graphs/az-phoenix.*` |
+| 2. Shade | `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14` | `data/shade-cache/az-phoenix.sqlite` |
+| 3. Warm (recommended) | API startup or `POST .../routing/warm` | `data/routing-cache/az-phoenix/` |
 
-The [Setup guide](setup.md) walks through this for **Phoenix metro (wide)** — `az-phoenix` — which is the current default.
+Full walkthrough: [Setup guide](setup.md) → [Routing performance](performance.md).
 
 ---
 
-## Project layout (high level)
+## Project layout
 
 ```
 UmbraStride/
-├── apps/web/          ← Browser map (React + MapLibre)
-├── services/api/      ← Backend (Python FastAPI)
-├── services/shade-worker/  ← Optional ShadeMap batch jobs
-├── packages/geo-core/     ← OSM graphs
-├── packages/routing-core/ ← Routing + shade SQLite
-├── scripts/           ← Bootstrap & seed commands
-├── data/              ← Graphs & cache (created by you)
-└── docs/              ← You are here
+├── apps/web/              ← Browser map (React + MapLibre)
+├── services/api/          ← FastAPI backend
+├── services/shade-worker/ ← Optional ShadeMap jobs
+├── packages/geo-core/     ← OSM graphs, pickle, edge index
+├── packages/routing-core/ ← Routing, rustworkx, caches
+├── scripts/               ← bootstrap, seed, precompute
+├── data/                  ← Graphs, shade, routing cache (you create)
+└── docs/                  ← You are here
 ```
 
 ---
 
-## Keeping docs accurate
+## Current features (tanmay branch)
 
-These docs match the **`tanmay`** branch features as of the latest release:
-
-- **No metro dropdown** — area is chosen automatically from map clicks.
-- **Default metro:** `az-phoenix` (wide Phoenix), not downtown-only.
-- **Map:** [OpenFreeMap](https://openfreemap.org/) + 3D buildings ([MapLibre example](https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/)).
-- **Optional:** live building shadows with a [ShadeMap](https://shademap.app/about/) API key.
-
-If something in the app disagrees with the docs, open an issue or update the doc that was wrong.
+- **No metro dropdown** — AOI from map clicks (widest matching preset).
+- **Default metro:** `az-phoenix` (wide Phoenix / Tempe / Scottsdale).
+- **Map:** [OpenFreeMap](https://openfreemap.org/) + 3D buildings.
+- **Optional:** live shadows with [ShadeMap](https://shademap.app/about/) key.
+- **Performance:** pickle graph load, disk routing cache, rustworkx A*, API warm on startup.
 
 ---
 
 ## Quick links
 
 - [Main README](../README.md)
-- [Environment template](../.env.example)
-- [Web app env template](../apps/web/.env.example)
-- [Arizona region manifest](../data/regions/arizona.json)
+- [`.env.example`](../.env.example)
+- [`apps/web/.env.example`](../apps/web/.env.example)
+- [Arizona manifest](../data/regions/arizona.json)
+
+---
+
+## Documentation map
+
+```mermaid
+flowchart TD
+  Setup[setup.md] --> Perf[performance.md]
+  Setup --> User[user-guide.md]
+  Perf --> Arch[architecture.md]
+  Perf --> Shade[shade-cache.md]
+  Arch --> API[api.md]
+  Setup --> Trouble[troubleshooting.md]
+  Setup --> Config[configuration.md]
+  Arizona[arizona.md] --> Setup
+```

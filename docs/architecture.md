@@ -1,6 +1,6 @@
 # Architecture
 
-This document explains **how UmbraStride is built** for developers and technical readers. For everyday app usage, see the [User guide](user-guide.md).
+How UmbraStride is built — for developers and technical readers. For map usage, see the [User guide](user-guide.md).
 
 ---
 
@@ -13,34 +13,46 @@ flowchart LR
   end
   subgraph backend [Python]
     API[services/api FastAPI]
-    Geo[geo-core OSMnx graphs]
-    Route[routing-core Dijkstra + cache]
+    Geo[geo-core OSMnx + pickle]
+    Route[routing-core rustworkx + caches]
   end
   subgraph optional [Optional Node]
-    Worker[shade-worker Playwright]
+    Worker[shade-worker]
   end
   subgraph disk [data/]
-    GraphML[graphs/*.graphml]
-    SQLite[shade-cache/*.sqlite]
+    GraphML[graphs graphml + pkl]
+    Index[edge-index.json]
+    SQLite[shade-cache sqlite]
+    RC[routing-cache pkl]
   end
-  Web -->|HTTP /v1/route| API
+  Web -->|POST /v1/route| API
   API --> Geo
   API --> Route
   Geo --> GraphML
+  Geo --> Index
   Route --> GraphML
   Route --> SQLite
-  Worker -->|ShadeMap profile| SQLite
-  API -.->|cache warm| Worker
+  Route --> RC
+  Worker --> SQLite
+  API -.->|shade cache/warm| Worker
+  API -.->|routing/warm| Route
 ```
 
-**Request path (Find routes):**
+---
 
-1. Web sends origin, destination, datetime, alpha to `POST /v1/route`.
+## Request path (Find routes)
+
+1. Web sends origin, destination, datetime, α → `POST /v1/route`.
 2. API resolves **AOI** from Arizona presets (widest metro containing both points).
-3. API loads **GraphML** + **shade SQLite** for that AOI and time bucket.
-4. `routing-core` builds a collapsed directed graph with weights for α ∈ {0, custom, 1}.
-5. Three Dijkstra runs (parallel when configured) return paths.
-6. API returns GeoJSON geometries + metrics; web draws colored lines.
+3. **Load street graph** — prefer `graph.pkl` over GraphML; ensure `edge-index.json`.
+4. **Load shade** — one SQLite query → dense `float32` array indexed by edge key order.
+5. **Get routing DiGraph** — from disk cache (`routing-cache/*.routing.pkl`) or build with NumPy weights (no geometry on edges).
+6. **Corridor crop** around origin/destination; expand margin scales until path exists.
+7. **Three shortest paths** (rustworkx A* or Dijkstra) for α ∈ {1.0, 0.0, custom}.
+8. **Resolve geometry** on path edges only via walk graph `edge_key` lookup.
+9. Return GeoJSON + metrics; web draws colored lines.
+
+Startup (when `ROUTING_WARM_ON_STARTUP=1`): same load/build path for `DEFAULT_AOI_ID` before first HTTP request.
 
 ---
 
@@ -48,32 +60,36 @@ flowchart LR
 
 | Package / service | Language | Responsibility |
 |-------------------|----------|----------------|
-| `packages/geo-core` | Python | Download OSM walk graphs (OSMnx), save GraphML, region manifests, AOI resolution, GeoJSON export |
-| `packages/routing-core` | Python | Shade SQLite store, alpha-weighted edge costs, Dijkstra, in-memory caches |
-| `packages/shade-engine` | TypeScript | Shared types / keys for shade sampling (used by worker) |
-| `services/api` | Python | FastAPI REST surface |
-| `services/shade-worker` | TypeScript | Express + Playwright; batch ShadeMap `/profile` (mock or real) |
-| `apps/web` | TypeScript | React UI, MapLibre map, OpenFreeMap 3D buildings, ShadeMap overlay |
+| `packages/geo-core` | Python | OSM download (OSMnx), GraphML + pickle, edge index, AOI resolution |
+| `packages/routing-core` | Python | Shade SQLite, NumPy graph build, disk cache, rustworkx pathfind, LRU caches |
+| `packages/shade-engine` | TypeScript | Shared types for shade worker |
+| `services/api` | Python | FastAPI REST, startup warm, routing warm endpoint |
+| `services/shade-worker` | TypeScript | ShadeMap batch `/profile` (mock or real) |
+| `apps/web` | TypeScript | React, MapLibre, OpenFreeMap 3D, ShadeMap overlay |
 
 ---
 
 ## Data on disk
 
-After bootstrap and seed:
-
 ```
 data/
 ├── graphs/
-│   ├── az-phoenix.graphml      # Street network
-│   ├── az-phoenix.meta.json    # Bbox, node/edge counts
+│   ├── az-phoenix.graphml          # Source street network (OSMnx)
+│   ├── az-phoenix.graph.pkl        # Fast pickle reload
+│   ├── az-phoenix.edge-index.json  # edge_key list → dense index
+│   ├── az-phoenix.meta.json        # Bbox, counts
 │   └── ...
 ├── shade-cache/
-│   ├── az-phoenix.sqlite       # edge_key → shade_fraction per ts_bucket
+│   ├── az-phoenix.sqlite           # shade_fraction per (edge_key, ts_bucket)
+│   └── ...
+├── routing-cache/
+│   ├── az-phoenix/
+│   │   └── {hash}.routing.pkl      # Cached weighted DiGraph per bucket + α set
 │   └── ...
 ├── regions/
-│   └── arizona.json            # Metro presets + state bbox
-└── overrides/                  # Optional GeoJSON per AOI (exclude ways)
-    └── {aoi_id}.geojson
+│   └── arizona.json
+└── overrides/
+    └── {aoi_id}.geojson            # Optional exclude_way
 ```
 
 Controlled by `DATA_DIR` (default `./data`).
@@ -82,20 +98,20 @@ Controlled by `DATA_DIR` (default `./data`).
 
 ## AOI resolution (automatic)
 
-Implemented in `umbrastride_geo.regions`:
+In `umbrastride_geo.regions`:
 
-1. Find all metro **presets** whose bbox contains **both** origin and destination.
-2. Sort by area **largest first** (prefer `az-phoenix` over `az-phoenix-core` when both match).
-3. Return first **bootstrapped** match on the client; API uses same list for routing.
-4. If none contain both points, fall back to preset containing origin, then nearest centroid.
+1. Presets whose bbox contains **both** origin and destination.
+2. Sort by area **largest first** (`az-phoenix` over `az-phoenix-core`).
+3. Prefer bootstrapped graph on disk.
+4. Fallback: origin preset, then nearest centroid.
 
-The web app mirrors this in `apps/web/src/resolveAoi.ts`.
+Web mirror: `apps/web/src/resolveAoi.ts`.
 
 ---
 
 ## Routing model
 
-For edge length `L` and shade fraction `S ∈ [0,1]`:
+For edge length `L`, shade `S ∈ [0,1]`, preference `α`, sun penalty `β` (default 5):
 
 ```
 L_sun   = L * (1 - S)
@@ -103,26 +119,27 @@ L_shade = L * S
 weight  = α * L + (1 - α) * (L_sun * β + L_shade)
 ```
 
-`β` = `SUN_AVERSION_BETA` (default 5).  
-Dijkstra minimizes sum of weights along paths.
+Dijkstra / A* minimizes sum of weights.
 
-**Parallel edges** (same two intersections, multiple OSM ways) are collapsed to one directed edge per pair, keeping the **minimum** weight per α.
+**Parallel edges** collapse to one directed edge per `(u,v)` with minimum weight per α; **route_payloads** keep α-specific metrics for geometry/metrics on the winning parallel edge.
 
-See [Paper mapping](paper-mapping.md) for research context.
+See [Paper mapping](paper-mapping.md).
 
 ---
 
 ## Performance design
 
-| Layer | Strategy |
+| Stage | Strategy |
 |-------|----------|
-| Graph load | LRU cache per AOI; reload if GraphML mtime changes |
-| Shade load | One SQLite query per (AOI, time bucket); nearest-hour fallback if exact bucket missing |
-| Routing graph | Vectorized NumPy weight matrix; cached DiGraph per (AOI, bucket, α set) |
-| Dijkstra | Local subgraph crop around O/D; parallel ThreadPool per α |
-| Bootstrap / seed | Multiprocessing / thread pools; env-tunable worker counts |
+| Graph load | Pickle preferred over GraphML; LRU in RAM |
+| Shade load | Single SQL query → `float32[]` via edge index |
+| Graph build | Vectorized NumPy; geometry omitted from routing graph |
+| Routing graph | Disk pickle keyed by graph mtime + shade mtime + α set |
+| Path search | Adaptive corridor crop + rustworkx A* (or Dijkstra) |
+| Parallelism | ThreadPool for 3 α paths; NumPy/BLAS for weights |
+| Warm | API startup + `POST /v1/aoi/{id}/routing/warm` |
 
-Details: [Shade cache](shade-cache.md).
+Full walkthrough: [Routing performance](performance.md).
 
 ---
 
@@ -130,49 +147,52 @@ Details: [Shade cache](shade-cache.md).
 
 | Layer | Technology |
 |-------|------------|
-| Basemap | [OpenFreeMap Bright](https://tiles.openfreemap.org/styles/bright) (default) or Mapbox Streets |
-| 3D buildings | OpenFreeMap vector `building` layer + `fill-extrusion` ([MapLibre example](https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/)) |
-| Live shadows | `mapbox-gl-shadow-simulator` + `getFeatures` from same building source |
-| Routes / markers | GeoJSON sources added in `MapView.tsx` |
+| Basemap | [OpenFreeMap Bright](https://tiles.openfreemap.org/styles/bright) or Mapbox |
+| 3D buildings | OpenFreeMap `building` + MapLibre fill-extrusion |
+| Live shadows | `mapbox-gl-shadow-simulator` + building features |
+| Routes | GeoJSON in `MapView.tsx` |
 
 ---
 
 ## Shade pipeline modes
 
-| Mode | Command | Shade quality | Needs ShadeMap key |
-|------|---------|---------------|-------------------|
-| Demo / synthetic | `seed_demo_cache.py` | Approximate (bearing vs sun) | No |
-| Precompute | `precompute_shade.py` + worker | Intended real profiles | Yes (worker) |
-| Cache warm | `POST .../cache/warm` | Sample ping only | Worker running |
+| Mode | Command | Quality | ShadeMap key |
+|------|---------|---------|--------------|
+| Demo synthetic | `seed_demo_cache.py` | Approximate | No |
+| Precompute | `precompute_shade.py` + worker | Real profiles | Yes |
+| Shade warm | `POST .../cache/warm` | Sample ping | Worker |
+| Routing warm | `POST .../routing/warm` | N/A (preload only) | No |
 
 ---
 
 ## API surface
 
-Full list: [API reference](api.md).
+[API reference](api.md) — includes `POST /v1/aoi/{aoi_id}/routing/warm`.
 
 ---
 
 ## Extension points
 
-- **New region:** Add `data/regions/{id}.json`, presets, bootstrap script invocation.
-- **Street overrides:** `data/overrides/{aoi_id}.geojson` with `exclude_way` actions.
-- **Custom β or weight function:** `umbrastride_routing/weights.py` + rebuild graph cache.
-- **Production deploy:** Run API behind reverse proxy; build web with `npm run build -w @umbrastride/web`; set `VITE_API_URL`.
+- New region: `data/regions/{id}.json` + bootstrap.
+- Street overrides: `data/overrides/{aoi_id}.geojson`.
+- Weight function: `umbrastride_routing/weights.py` + invalidate routing cache.
+- Path engine: `ROUTING_PATH_ENGINE=networkx` for debugging.
+- Production: reverse proxy, `npm run build`, set `VITE_API_URL`.
 
 ---
 
-## What is not implemented (v1)
+## Not implemented (v1)
 
-- Playwright ShadeMap integration fully production-hardened in worker (mock path exists).
-- Docker images referenced in compose but not shipped in all branches.
-- Globe / terrain / full-state single-graph routing.
-- Mobile native apps.
+- Production-hardened Playwright ShadeMap worker.
+- Docker images on all branches.
+- Single statewide graph.
+- Native mobile apps.
 
 ---
 
 ## See also
 
-- [Glossary](glossary.md)
+- [Routing performance](performance.md)
+- [Shade cache](shade-cache.md)
 - [Configuration](configuration.md)
-- [Arizona coverage](arizona.md)
+- [Glossary](glossary.md)

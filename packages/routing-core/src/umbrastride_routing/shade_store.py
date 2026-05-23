@@ -90,6 +90,69 @@ class ShadeStore:
             ).fetchall()
         return {ek: float(sf) for ek, sf in rows}
 
+    def load_bucket_array(
+        self,
+        ts_bucket: str,
+        n_edges: int,
+        key_to_index: dict[str, int],
+        default: float = 0.5,
+    ) -> np.ndarray:
+        """Load shade into a dense float32 array indexed by edge_key order."""
+        import numpy as np
+
+        arr = np.full(n_edges, default, dtype=np.float32)
+        with sqlite3.connect(self.path) as conn:
+            rows = conn.execute(
+                """
+                SELECT edge_key, shade_fraction FROM edge_shade
+                WHERE aoi_id = ? AND ts_bucket = ?
+                """,
+                (self.aoi_id, ts_bucket),
+            ).fetchall()
+        for ek, sf in rows:
+            idx = key_to_index.get(ek)
+            if idx is not None and 0 <= idx < n_edges:
+                arr[idx] = float(sf)
+        return arr
+
+    def resolve_bucket_array(
+        self,
+        ts_bucket: str,
+        n_edges: int,
+        key_to_index: dict[str, int],
+        default: float = 0.5,
+    ) -> tuple[str, np.ndarray, bool]:
+        """
+        Load shade array for ``ts_bucket``, or the nearest cached hour if missing.
+
+        Returns ``(resolved_bucket, shade_array, exact_match)``.
+        """
+        if self.load_bucket(ts_bucket):
+            return (
+                ts_bucket,
+                self.load_bucket_array(ts_bucket, n_edges, key_to_index, default),
+                True,
+            )
+
+        buckets = self.list_buckets()
+        if not buckets:
+            return (
+                ts_bucket,
+                self.load_bucket_array(ts_bucket, n_edges, key_to_index, default),
+                False,
+            )
+
+        target = _parse_bucket(ts_bucket)
+        nearest = min(
+            buckets,
+            key=lambda b: abs((_parse_bucket(b) - target).total_seconds()),
+        )
+        return (
+            nearest,
+            self.load_bucket_array(nearest, n_edges, key_to_index, default),
+            False,
+        )
+
     def get_fraction(self, edge_key: str, ts_bucket: str, default: float = 0.5) -> float:
         resolved, data, _ = self.resolve_bucket(ts_bucket)
         return data.get(edge_key, default)

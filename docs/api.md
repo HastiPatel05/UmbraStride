@@ -166,6 +166,45 @@ Ping shade worker with a sample of edge midpoints (does not full precompute).
 
 **Errors:** `502` if worker down; `404` if graph missing.
 
+### `POST /v1/aoi/{aoi_id}/routing/warm`
+
+Preload **street graph**, **shade arrays**, and **routing DiGraph** into memory and disk cache. Does not call ShadeMap.
+
+Use after bootstrap/seed or before a demo to avoid a slow first `POST /v1/route`.
+
+**Body (all fields optional):**
+
+```json
+{
+  "datetime": "2026-05-22T12:00:00Z",
+  "hours": [10, 11, 12, 13, 14],
+  "alphas": [1.0, 0.0, 0.5]
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `datetime` | Warm this specific time bucket (15-min floor) |
+| `hours` | UTC hours on **today's date** to warm (e.g. noon → current UTC date at 12:00) |
+| `alphas` | α values to include in cached routing graph (default `[1.0, 0.0, 0.5]`) |
+
+If both `datetime` and `hours` omitted, warms **current UTC** bucket only.
+
+**Response:**
+
+```json
+{
+  "status": "warmed",
+  "aoi_id": "az-phoenix",
+  "warmed_buckets": ["2026-05-22T12:00", "2026-05-22T10:00"],
+  "alphas": [1.0, 0.0, 0.5]
+}
+```
+
+**Errors:** `404` if graph not bootstrapped.
+
+**Startup equivalent:** set `ROUTING_WARM_ON_STARTUP=1` and `ROUTING_WARM_HOURS=10,11,12,13,14` in `.env`. See [Routing performance](performance.md).
+
 ---
 
 ## Routing (main endpoint)

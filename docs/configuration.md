@@ -62,7 +62,23 @@ Set any to a positive integer to limit cores (e.g. `ROUTING_DIJKSTRA_WORKERS=4`)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ROUTING_LOCAL_MARGIN_DEG` | `0.012` | Before Dijkstra, crop graph to a box around origin/destination (~1.3 km margin). Speeds up requests on large metros. |
+| `ROUTING_LOCAL_MARGIN_DEG` | `0.012` | Corridor crop margin around origin/destination before shortest-path. |
+| `ROUTING_CORRIDOR_SCALES` | `0.6,1.0,1.6,3.0` | Expand corridor until a path exists (multipliers on margin). |
+| `ROUTING_DISK_CACHE` | `1` | Persist built routing DiGraph under `data/routing-cache/`. |
+| `ROUTING_WARM_ON_STARTUP` | `1` | Preload `DEFAULT_AOI_ID` when API starts. |
+| `ROUTING_WARM_HOURS` | empty | Comma hours (UTC) to warm on startup, e.g. `10,11,12,13,14`. |
+| `ROUTING_PATH_ENGINE` | `rustworkx` | `rustworkx` or `networkx` for shortest-path. |
+| `ROUTING_USE_ASTAR` | `1` | A* with geographic heuristic (disable if debugging). |
+
+**On-disk artifacts (auto-created):**
+
+| Path | Purpose |
+|------|---------|
+| `data/graphs/{aoi}.graph.pkl` | Fast street-graph reload (vs GraphML). |
+| `data/graphs/{aoi}.edge-index.json` | Stable `edge_key` → index for vectorized shade. |
+| `data/routing-cache/{aoi}/*.routing.pkl` | Cached weighted routing graph per shade bucket + α set. |
+
+**API:** `POST /v1/aoi/{aoi_id}/routing/warm` preloads graph + routing cache without waiting for the first route click.
 
 ### Optional Mapbox (server)
 

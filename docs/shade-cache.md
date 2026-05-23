@@ -1,29 +1,43 @@
 # Shade cache
 
-How UmbraStride stores **shade along streets**, how that affects **routing**, and how to **fill or refresh** the cache. Written for both users and developers.
+How UmbraStride stores **shade along streets**, how that affects **routing**, and how to **fill, refresh, and warm** caches.
+
+**Performance-focused setup:** [Routing performance](performance.md)  
+**Install steps:** [Setup guide](setup.md)
 
 ---
 
 ## Plain-language summary
 
-For each **street segment** and **time of day**, UmbraStride stores a number between 0 and 1:
+For each **street segment** and **time of day**, UmbraStride stores a number **0–1**:
 
 - **0** — mostly in the sun  
 - **1** — mostly in shade  
 
-When you ask for a **coolest** route, the algorithm makes **sunny** segments “cost more” than **shady** ones. When you ask for **shortest**, shade is ignored.
+**Coolest** routes penalize sunny segments. **Shortest** routes ignore shade.
 
-That data lives in a **SQLite file per AOI** on disk. If the file is empty or missing your chosen time, every street looks “50% shady” and all routes collapse to the same shortest path.
+Data lives in **SQLite per AOI**. If missing, every street defaults to **50% shade** and all three routes look the same.
 
 ---
 
-## Hybrid cache model (design)
+## Cache tiers (full stack)
 
-| Tier | Name | What happens |
-|------|------|----------------|
-| **L1 hot** | In-memory | After first API request: graph + shade map + routing graph cached in RAM |
-| **L2 warm** | SQLite on disk | Pre-seeded or precomputed rows per `(aoi_id, edge_key, ts_bucket)` |
-| **L3 cold** | On-demand | Shade worker profiles missing edges (optional; `cache/warm`, `precompute_shade.py`) |
+| Tier | Storage | Contents | Speed |
+|------|---------|----------|-------|
+| **L0 RAM** | API process | Pickle graph, shade array, routing DiGraph | Fastest |
+| **L1 disk** | `routing-cache/*.routing.pkl`, `graph.pkl` | Pre-built routing graphs, fast graph reload | Fast after first build |
+| **L2 disk** | `shade-cache/*.sqlite` | Shade fractions per edge × hour | One query per bucket |
+| **L3 source** | GraphML | Raw OSM street network | Slowest parse |
+
+```mermaid
+flowchart TB
+  Route[POST /v1/route] --> L0
+  L0 -->|miss| L1
+  L1 -->|miss| L2
+  L2 --> GraphML[GraphML + edge-index]
+  L1 --> Build[NumPy build routing graph]
+  Build --> L1
+```
 
 ---
 
@@ -32,63 +46,50 @@ That data lives in a **SQLite file per AOI** on disk. If the file is empty or mi
 | Field | Format | Example |
 |-------|--------|---------|
 | `aoi_id` | Metro id | `az-phoenix` |
-| `edge_key` | Unique street segment id in graph | `41190548\|7093578437\|0` |
-| `ts_bucket` | UTC, floored to **15 minutes** | `2026-05-22T12:00` |
+| `edge_key` | Segment id | `41190548\|7093578437\|0` |
+| `ts_bucket` | UTC, 15-min floor | `2026-05-22T12:00` |
 
-Routing converts your request datetime to a bucket, loads all rows for that bucket in **one SQL query**, then builds edge weights.
+**Edge index:** `data/graphs/{aoi}.edge-index.json` maps each `edge_key` to a dense index so shade loads as a **NumPy array** (fast graph build).
 
-### Time bucket matching
+### Nearest-hour fallback
 
-If **no rows** exist for the exact bucket:
+If exact bucket has no rows:
 
-1. API loads the **nearest cached hour** in SQLite.
-2. Response includes `shade_cache_exact: false` and `shade_ts_bucket` (actual bucket used).
-3. Web app may show a yellow hint in the sidebar.
+1. API uses **nearest cached hour**.
+2. Response: `shade_cache_exact: false`, `shade_ts_bucket` = actual bucket.
+3. Web may show a yellow sidebar hint.
 
-**Fix for users:** Seed the hours you test:
+**Fix:** Seed the hours you test:
 
 ```bash
 python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date 2026-05-22
 ```
 
-Use the **same calendar day** in the web datetime picker, or accept nearest-hour fallback.
-
 ---
 
-## How shade is computed (per edge)
+## How shade is computed
 
-### Production path (ShadeMap + worker)
+### Demo (synthetic — no ShadeMap)
 
-For each graph edge:
-
-1. Sample `N = max(5, ceil(length_m / 10))` points along the street geometry.
-2. Call ShadeMap shade profile at datetime `t` (via shade worker).
-3. `shade_fraction = (points in shade) / N`.
-4. Store in SQLite.
-
-Command:
-
-```bash
-npm run dev:worker
-python scripts/precompute_shade.py --aoi az-phoenix --hours 10,11,12,13,14
-```
-
-Requires `SHADEMAP_API_KEY` and worker running.
-
-### Demo path (synthetic — no ShadeMap)
-
-`scripts/seed_demo_cache.py` writes **fake** shade that varies by:
-
-- Time of day (sun angle proxy)
-- Street **bearing** vs simulated sun from the south
-
-Good enough to see **different** shortest vs coolest routes. **Not** ground truth for a real walk.
+`scripts/seed_demo_cache.py` — fake shade from time + street bearing vs sun.
 
 ```bash
 python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14
 ```
 
-Parallel hours: `SHADE_SEED_WORKERS=0` uses all CPU cores.
+Parallel: `SHADE_SEED_WORKERS=0` uses all cores.
+
+### Production (ShadeMap + worker)
+
+1. Sample points along each edge geometry.  
+2. ShadeMap profile via worker.  
+3. `shade_fraction = shaded_points / N`.  
+4. Bulk insert SQLite.
+
+```bash
+npm run dev:worker
+python scripts/precompute_shade.py --aoi az-phoenix --hours 10,11,12,13,14
+```
 
 ---
 
@@ -107,22 +108,20 @@ CREATE TABLE edge_shade (
 );
 ```
 
-Inspect (optional):
+Inspect:
 
 ```bash
 python3 -c "
 from umbrastride_routing.shade_store import ShadeStore
 s = ShadeStore('az-phoenix')
 print(s.coverage())
-print('buckets', s.list_buckets()[:5])
+print('buckets', s.list_buckets()[:8])
 "
 ```
 
 ---
 
-## How shade affects routing weights
-
-For edge length `L`, shade `S`, preference `α`, sun penalty `β` (default 5):
+## How shade affects weights
 
 ```
 L_sun   = L * (1 - S)
@@ -130,41 +129,52 @@ L_shade = L * S
 weight  = α * L + (1 - α) * (L_sun * β + L_shade)
 ```
 
-- **α = 1** → weight = `L` (shortest path).  
-- **α = 0** → sunny length counts more (×β).  
-- **α = 0.35** → blend (your slider).
+- **α = 1** → shortest (distance only)  
+- **α = 0** → coolest (sun × β)  
+- **Slider** → blend  
 
-Code: `packages/routing-core/src/umbrastride_routing/weights.py`.
+Code: `packages/routing-core/src/umbrastride_routing/weights.py`  
+Default **β = 5** (`SUN_AVERSION_BETA`).
 
-Each request computes paths for **α ∈ {1.0, 0.0, your α}** in parallel (when `ROUTING_DIJKSTRA_WORKERS` > 0).
+Each request: paths for **α ∈ {1.0, 0.0, your α}** in parallel when `ROUTING_DIJKSTRA_WORKERS` > 0.
 
 ---
 
-## Routing performance (API)
+## Routing performance (detailed)
 
-In-memory caches (per API process):
+### What happens on `POST /v1/route`
 
-| Cache | Invalidation |
-|-------|----------------|
-| GraphML | File mtime change |
-| Shade map | SQLite mtime + bucket resolve |
-| Routing DiGraph | Graph + shade + α set |
+| Step | Work | Optimized by |
+|------|------|--------------|
+| 1 | Load walk graph | `graph.pkl` + LRU |
+| 2 | Load shade bucket | One SQL → `float32[]` + edge index |
+| 3 | Build/get routing DiGraph | Disk `routing-cache/*.routing.pkl` |
+| 4 | Crop corridor subgraph | `ROUTING_CORRIDOR_SCALES` |
+| 5 | 3× shortest path | rustworkx A* + ThreadPool |
+| 6 | Path geometry | Lookup only on path edges |
 
-Optimizations:
+### Typical timings (hardware-dependent)
 
-- **Bulk** SQLite load per bucket (not per edge query).
-- **Vectorized** NumPy weight build.
-- **Local subgraph** crop around origin/destination (`ROUTING_LOCAL_MARGIN_DEG`, default ~1.3 km).
-- **Parallel** Dijkstra per α.
+| AOI | Cold (no disk routing cache) | Warm (RAM or routing pkl) |
+|-----|------------------------------|---------------------------|
+| `az-phoenix-core` | ~5–15 s | often &lt; 1 s |
+| `az-phoenix` | ~1–5 min first build | ~1–5 s load |
 
-Typical timings (hardware-dependent):
+**Note:** `--reload` in dev restarts the API and clears L0 RAM.
 
-| AOI | First request | Warm requests |
-|-----|---------------|---------------|
-| `az-phoenix-core` | ~5 s (load + build) | often &lt; 0.5 s |
-| `az-phoenix` | ~10–20 s first time | ~0.3–2 s |
+### Warm before demo
 
-Restart API after changing routing code.
+**Automatic:** `ROUTING_WARM_ON_STARTUP=1` + `ROUTING_WARM_HOURS=10,11,12,13,14`
+
+**Manual:**
+
+```bash
+curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
+  -H "Content-Type: application/json" \
+  -d '{"hours": [10, 11, 12, 13, 14]}'
+```
+
+See [Routing performance](performance.md) for full steps.
 
 ---
 
@@ -172,67 +182,69 @@ Restart API after changing routing code.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `UMBRASTIDE_CPU_WORKERS` | all cores | Global parallel default when `0` |
-| `ROUTING_DIJKSTRA_WORKERS` | all cores | Parallel Dijkstra per α |
-| `ROUTING_LOCAL_MARGIN_DEG` | `0.012` | Subgraph crop margin |
-| `SHADE_SEED_WORKERS` | all cores | `seed_demo_cache.py` |
-| `PRECOMPUTE_WORKERS` | all cores | `precompute_shade.py` parallel HTTP |
-| `SUN_AVERSION_BETA` | `5.0` | Sun penalty strength |
-| `SHADE_WORKER_URL` | `http://127.0.0.1:3001` | Worker for warm/precompute |
+| `SUN_AVERSION_BETA` | `5.0` | Sun penalty |
+| `ROUTING_DISK_CACHE` | `1` | Persist routing DiGraph |
+| `ROUTING_WARM_ON_STARTUP` | `1` | Warm on API boot |
+| `ROUTING_WARM_HOURS` | empty | Extra UTC hours at startup |
+| `ROUTING_PATH_ENGINE` | `rustworkx` | Path library |
+| `ROUTING_USE_ASTAR` | `1` | A* heuristic |
+| `ROUTING_LOCAL_MARGIN_DEG` | `0.012` | Corridor margin |
+| `ROUTING_CORRIDOR_SCALES` | `0.6,1.0,1.6,3.0` | Expand until path found |
+| `SHADE_SEED_WORKERS` | all cores | Parallel seed |
+| `PRECOMPUTE_WORKERS` | all cores | Parallel precompute |
 
 Full table: [Configuration](configuration.md).
 
 ---
 
-## API: cache coverage and warm
+## API endpoints
 
-**Coverage:**
+### Shade coverage
 
 ```http
 GET /v1/aoi/az-phoenix/cache/coverage
 GET /v1/aoi/az-phoenix/cache/coverage?ts_bucket=2026-05-22T12:00
 ```
 
-**Warm (sample):**
+### Shade warm (worker sample)
 
 ```http
 POST /v1/aoi/az-phoenix/cache/warm
 Content-Type: application/json
 
-{"datetime": "2026-05-22T12:00:00Z", "edge_keys": null}
+{"datetime": "2026-05-22T12:00:00Z"}
 ```
 
-Does not replace full `precompute_shade.py` — pings worker with up to 200 sample points.
+Up to 200 sample points — not full precompute.
 
----
+### Routing warm (preload graph + routing cache)
 
-## Shade worker
+```http
+POST /v1/aoi/az-phoenix/routing/warm
+Content-Type: application/json
 
-`services/shade-worker` — Express service.
+{"hours": [10, 11, 12, 13, 14], "alphas": [1.0, 0.0, 0.5]}
+```
 
-- **POST `/profile`** — body `{ "points": [{lng, lat}, ...], "datetime": "ISO" }`  
-- Returns `{ "results": [{ "lng", "lat", "inShade" }, ...] }`  
-- Implementation may use **mock** shade when Playwright/ShadeMap is not fully wired.
+Does **not** fetch ShadeMap — only loads/builds routing artifacts.
 
-Start: `npm run dev:worker`
+Details: [API reference](api.md).
 
 ---
 
 ## Checklist: routing looks wrong
 
 - [ ] `data/shade-cache/{aoi}.sqlite` exists  
-- [ ] `seed_demo_cache` or `precompute` run for that AOI  
-- [ ] Web datetime matches seeded `--hours` / `--date`  
-- [ ] API restarted after seeding  
-- [ ] Sidebar does not only say “nearest cached hour” with empty DB  
-- [ ] Coolest and shortest differ on map (teal vs orange)
-
-More: [Troubleshooting — identical routes](troubleshooting.md#all-three-routes-look-identical).
+- [ ] Seeded for AOI + datetime hour  
+- [ ] API restarted after seed  
+- [ ] Sidebar not stuck on empty nearest-hour fallback  
+- [ ] Shortest (orange) ≠ coolest (teal) on map  
+- [ ] `data/routing-cache/{aoi}/` populated after warm  
 
 ---
 
 ## See also
 
-- [User guide](user-guide.md)
+- [Routing performance](performance.md)
+- [Troubleshooting](troubleshooting.md)
 - [Architecture](architecture.md)
-- [Paper mapping](paper-mapping.md)
