@@ -2,6 +2,8 @@ const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 export type LngLat = { lng: number; lat: number };
 
+export type SnappedPoint = LngLat & { distance_m: number };
+
 export type RouteResult = {
   label: string;
   alpha: number;
@@ -57,6 +59,8 @@ export async function fetchRoute(params: {
   shade_cache_exact?: boolean;
   sun_below_horizon?: boolean;
   aoi_id?: string;
+  origin_snapped?: SnappedPoint;
+  destination_snapped?: SnappedPoint;
 }> {
   const res = await fetch(`${API_BASE}/v1/route`, {
     method: "POST",

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import MapView from "./MapView";
-import { fetchArizonaRegion, fetchRoute, syncShadeCache, type RouteResult } from "./api";
+import { fetchArizonaRegion, fetchRoute, syncShadeCache, type RouteResult, type SnappedPoint } from "./api";
 import { resolveAoiForRoute, resolvePresetForPoint } from "./resolveAoi";
 
 const DEFAULT_AOI = import.meta.env.VITE_DEFAULT_AOI || "az-phoenix";
@@ -12,6 +12,13 @@ const SHADE_AUTO_SYNC_MS = 5 * 60 * 1000;
 function toLocalDatetimeValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function shiftLocalDatetimeValue(value: string, minutes: number): string {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return toLocalDatetimeValue(new Date());
+  d.setMinutes(d.getMinutes() + minutes);
+  return toLocalDatetimeValue(d);
 }
 
 export default function App() {
@@ -31,6 +38,8 @@ export default function App() {
   const [datetime, setDatetime] = useState(toLocalDatetimeValue(new Date()));
   const [alpha, setAlpha] = useState(0.35);
   const [routes, setRoutes] = useState<RouteResult[]>([]);
+  const [originSnapped, setOriginSnapped] = useState<SnappedPoint | null>(null);
+  const [destinationSnapped, setDestinationSnapped] = useState<SnappedPoint | null>(null);
   const [shadeCacheNote, setShadeCacheNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -92,8 +101,13 @@ export default function App() {
 
   const onPickPoint = useCallback(
     (kind: "origin" | "destination", lng: number, lat: number) => {
-      if (kind === "origin") setOrigin([lng, lat]);
-      else setDestination([lng, lat]);
+      if (kind === "origin") {
+        setOrigin([lng, lat]);
+        setOriginSnapped(null);
+      } else {
+        setDestination([lng, lat]);
+        setDestinationSnapped(null);
+      }
     },
     []
   );
@@ -143,6 +157,8 @@ export default function App() {
           alpha,
         });
         setRoutes(result.routes);
+        setOriginSnapped(result.origin_snapped ?? null);
+        setDestinationSnapped(result.destination_snapped ?? null);
         if (result.sun_below_horizon) {
           setShadeCacheNote(
             "Sun is below the horizon — coolest and shortest routes use the same distance (full shade)."
@@ -163,6 +179,8 @@ export default function App() {
         if (!opts?.silent) {
           setError(e instanceof Error ? e.message : "Route failed");
           setRoutes([]);
+          setOriginSnapped(null);
+          setDestinationSnapped(null);
         }
       } finally {
         if (!opts?.silent) setLoading(false);
@@ -268,11 +286,24 @@ export default function App() {
 
         <div className="field">
           <label>Date & time (local)</label>
-          <input
-            type="datetime-local"
-            value={datetime}
-            onChange={(e) => setDatetime(e.target.value)}
-          />
+          <div className="datetime-control">
+            <input
+              type="datetime-local"
+              value={datetime}
+              onChange={(e) => setDatetime(e.target.value)}
+            />
+            <button type="button" onClick={() => setDatetime(toLocalDatetimeValue(new Date()))}>
+              Now
+            </button>
+          </div>
+          <div className="time-stepper" aria-label="Adjust shadow time">
+            <button type="button" onClick={() => setDatetime((v) => shiftLocalDatetimeValue(v, -30))}>
+              −30m
+            </button>
+            <button type="button" onClick={() => setDatetime((v) => shiftLocalDatetimeValue(v, 30))}>
+              +30m
+            </button>
+          </div>
         </div>
 
         <div className="field">
@@ -322,6 +353,8 @@ export default function App() {
           routes={routes}
           origin={origin}
           destination={destination}
+          originSnapped={originSnapped}
+          destinationSnapped={destinationSnapped}
           onPickPoint={onPickPoint}
           pickMode={pickMode}
           datetime={datetimeIso}

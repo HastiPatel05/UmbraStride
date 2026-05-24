@@ -56,11 +56,6 @@ def _path_geometry_from_digraph(
     D: nx.DiGraph,
     path: list,
     weight_attr: str,
-    *,
-    origin_lng: float | None = None,
-    origin_lat: float | None = None,
-    dest_lng: float | None = None,
-    dest_lat: float | None = None,
 ) -> dict[str, Any] | None:
     """Build a single LineString following path order (never drop disconnected segments)."""
     coords: list[tuple[float, float]] = []
@@ -83,19 +78,6 @@ def _path_geometry_from_digraph(
         else:
             continue
         _append_path_coords(coords, segment)
-
-    if origin_lng is not None and origin_lat is not None and coords:
-        origin_pt = (origin_lng, origin_lat)
-        if (
-            abs(coords[0][0] - origin_pt[0]) > 1e-9
-            or abs(coords[0][1] - origin_pt[1]) > 1e-9
-        ):
-            coords.insert(0, origin_pt)
-
-    if dest_lng is not None and dest_lat is not None and coords:
-        dest_pt = (dest_lng, dest_lat)
-        if abs(coords[-1][0] - dest_pt[0]) > 1e-9 or abs(coords[-1][1] - dest_pt[1]) > 1e-9:
-            coords.append(dest_pt)
 
     if len(coords) < 2:
         return None
@@ -125,11 +107,6 @@ def _build_route_result(
     D: nx.DiGraph,
     ts_bucket: str,
     shortest_dist: float | None,
-    *,
-    origin_lng: float,
-    origin_lat: float,
-    dest_lng: float,
-    dest_lat: float,
 ) -> tuple[dict, float | None]:
     weight_attr = _alpha_weight_key(a)
     metrics = _route_metrics_digraph(D, path, weight_attr)
@@ -138,10 +115,6 @@ def _build_route_result(
         D,
         path,
         weight_attr,
-        origin_lng=origin_lng,
-        origin_lat=origin_lat,
-        dest_lng=dest_lng,
-        dest_lat=dest_lat,
     )
     label = "custom"
     if a >= 0.999:
@@ -183,8 +156,8 @@ def compute_routes(
 
     G = get_graph(aoi_id)
 
-    origin_node, _ = snap_point_to_graph(G, origin_lng, origin_lat, label="Origin")
-    dest_node, _ = snap_point_to_graph(G, dest_lng, dest_lat, label="Destination")
+    origin_node, origin_snap_dist_m = snap_point_to_graph(G, origin_lng, origin_lat, label="Origin")
+    dest_node, dest_snap_dist_m = snap_point_to_graph(G, dest_lng, dest_lat, label="Destination")
 
     alphas = compare_alphas if compare_alphas is not None else [1.0, 0.0, alpha]
     seen: set[float] = set()
@@ -219,17 +192,26 @@ def compute_routes(
             D,
             ts_bucket,
             shortest_dist,
-            origin_lng=origin_lng,
-            origin_lat=origin_lat,
-            dest_lng=dest_lng,
-            dest_lat=dest_lat,
         )
         routes.append(route)
+
+    origin_node_data = G.nodes[origin_node]
+    dest_node_data = G.nodes[dest_node]
 
     return {
         "aoi_id": aoi_id,
         "origin_node": origin_node,
         "dest_node": dest_node,
+        "origin_snapped": {
+            "lng": float(origin_node_data["x"]),
+            "lat": float(origin_node_data["y"]),
+            "distance_m": round(origin_snap_dist_m, 1),
+        },
+        "destination_snapped": {
+            "lng": float(dest_node_data["x"]),
+            "lat": float(dest_node_data["y"]),
+            "distance_m": round(dest_snap_dist_m, 1),
+        },
         "ts_bucket": ts_bucket,
         "shade_ts_bucket": shade_ts_bucket,
         "shade_cache_exact": shade_cache_exact,

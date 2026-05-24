@@ -60,7 +60,7 @@ def test_route_geometry_keeps_all_path_segments(tmp_path, monkeypatch):
         "test",
         0.0001,
         0.0001,
-        0.0001,
+        0.0009,
         0.0009,
         datetime(2026, 5, 21, 12, 0, tzinfo=timezone.utc),
         0.0,
@@ -70,6 +70,34 @@ def test_route_geometry_keeps_all_path_segments(tmp_path, monkeypatch):
     geom = shortest["geometry"]
     assert geom is not None
     assert len(geom["coordinates"]) >= 3
+
+
+def test_route_geometry_starts_and_ends_on_snapped_graph_nodes(tmp_path, monkeypatch):
+    """Clicked points must not be inserted as diagonal route connectors."""
+    _synthetic_graph(tmp_path, monkeypatch)
+    result = compute_routes(
+        "test",
+        0.0001,
+        0.0001,
+        0.0001,
+        0.0009,
+        datetime(2026, 5, 21, 12, 0, tzinfo=timezone.utc),
+        1.0,
+        compare_alphas=[1.0],
+    )
+    shortest = next(r for r in result["routes"] if r["label"] == "shortest")
+    coords = shortest["geometry"]["coordinates"]
+
+    assert coords[0] == (0.0, 0.0)
+    assert coords[-1] == (0.0, 0.001)
+    assert coords[0] != (0.0001, 0.0001)
+    assert coords[-1] != (0.0001, 0.0009)
+    assert result["origin_snapped"]["lng"] == 0.0
+    assert result["origin_snapped"]["lat"] == 0.0
+    assert result["origin_snapped"]["distance_m"] > 0
+    assert result["destination_snapped"]["lng"] == 0.0
+    assert result["destination_snapped"]["lat"] == 0.001
+    assert result["destination_snapped"]["distance_m"] > 0
 
 
 def test_compute_routes_shortest_equals_coolest_at_night(tmp_path, monkeypatch):

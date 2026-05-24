@@ -69,6 +69,48 @@ body,
   color: var(--text);
 }
 
+.datetime-control {
+  display: grid;
+  grid-template-columns: 1fr 64px;
+  gap: 0.5rem;
+}
+
+.datetime-control input {
+  min-width: 0;
+}
+
+.datetime-control button,
+.time-stepper button {
+  border-radius: 6px;
+  border: 1px solid #2a3548;
+  background: #243149;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.datetime-control button {
+  padding: 0 0.55rem;
+}
+
+.time-stepper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.time-stepper button {
+  padding: 0.45rem 0.5rem;
+}
+
+.datetime-control button:hover,
+.time-stepper button:hover {
+  border-color: var(--accent);
+  background: #1e3a5f;
+}
+
 .alpha-row {
   display: flex;
   justify-content: space-between;

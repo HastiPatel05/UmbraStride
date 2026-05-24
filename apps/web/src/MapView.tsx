@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
-import type { RouteResult } from "./api";
+import type { RouteResult, SnappedPoint } from "./api";
 import { add3dBuildingsLayer, getInitialMapStyle, usesVector3dBuildings } from "./mapStyle";
 import ShadeOverlay from "./ShadeOverlay";
 
@@ -29,6 +29,8 @@ type Props = {
   routes: RouteResult[];
   origin: [number, number] | null;
   destination: [number, number] | null;
+  originSnapped?: SnappedPoint | null;
+  destinationSnapped?: SnappedPoint | null;
   onPickPoint: (kind: "origin" | "destination", lng: number, lat: number) => void;
   pickMode: "origin" | "destination";
   datetime: string;
@@ -42,6 +44,8 @@ export default function MapView({
   routes,
   origin,
   destination,
+  originSnapped,
+  destinationSnapped,
   onPickPoint,
   pickMode,
   datetime,
@@ -299,6 +303,20 @@ export default function MapView({
           geometry: { type: "Point", coordinates: destination },
         });
       }
+      if (originSnapped) {
+        markers.push({
+          type: "Feature",
+          properties: { role: "origin-snap" },
+          geometry: { type: "Point", coordinates: [originSnapped.lng, originSnapped.lat] },
+        });
+      }
+      if (destinationSnapped) {
+        markers.push({
+          type: "Feature",
+          properties: { role: "dest-snap" },
+          geometry: { type: "Point", coordinates: [destinationSnapped.lng, destinationSnapped.lat] },
+        });
+      }
       const markerFc: GeoJSON.FeatureCollection = {
         type: "FeatureCollection",
         features: markers,
@@ -320,6 +338,10 @@ export default function MapView({
               "#22c55e",
               "dest",
               "#ef4444",
+              "origin-snap",
+              "#bbf7d0",
+              "dest-snap",
+              "#fecaca",
               "#fff",
             ],
             "circle-stroke-width": 2,
@@ -358,7 +380,7 @@ export default function MapView({
 
     if (map.isStyleLoaded()) applyLayers();
     else map.once("load", applyLayers);
-  }, [routes, origin, destination]);
+  }, [routes, origin, destination, originSnapped, destinationSnapped]);
 
   return (
     <div className="map-wrap" style={{ height: "100%" }}>
