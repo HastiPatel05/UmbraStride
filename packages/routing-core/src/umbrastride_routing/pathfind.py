@@ -10,6 +10,7 @@ import rustworkx as rx
 
 from umbrastride_routing.cpu import worker_count
 from umbrastride_routing.graph_build import alpha_weight_key
+from umbrastride_routing.weights import shade_bias_for_alpha
 
 
 def _path_engine() -> str:
@@ -61,7 +62,9 @@ def _formula_min_ratio(weight_attr: str) -> float | None:
         return None
     beta = float(os.environ.get("SUN_AVERSION_BETA", "5.0"))
     shade_tiebreak = float(os.environ.get("SHADE_DISTANCE_TIEBREAK", "0.001"))
-    return alpha + (1.0 - alpha) * min(beta, shade_tiebreak)
+    shade_bias = shade_bias_for_alpha(alpha)
+    distance_bias = 1.0 - shade_bias
+    return distance_bias + shade_bias * min(beta, shade_tiebreak)
 
 
 def _heuristic_scale(D: nx.DiGraph, weight_attr: str) -> float:

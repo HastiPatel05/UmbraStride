@@ -111,17 +111,18 @@ Web mirror: `apps/web/src/resolveAoi.ts`.
 
 ## Routing model
 
-For edge length `L`, shade `S ∈ [0,1]`, preference `α`, sun penalty `β` (default 5), and shaded-distance tie-break `ε` (default 0.001):
+For edge length `L`, shade `S ∈ [0,1]`, preference `α`, shade curve `γ` (default 3), sun penalty `β` (default 5), and shaded-distance tie-break `ε` (default 0.001):
 
 ```
 L_sun   = L * (1 - S)
 L_shade = L * S
-weight  = α * L + (1 - α) * (L_sun * β + L_shade * ε)
+b       = (1 - α) ^ γ
+weight  = (1 - b) * L + b * (L_sun * β + L_shade * ε)
 ```
 
 Dijkstra / A* minimizes sum of weights.
 
-At `α = 0`, the route minimizes sun exposure first; shaded distance only acts as a tiny tie-breaker. At `α = 1`, the route is pure shortest distance.
+At `α = 0`, the route minimizes sun exposure first; shaded distance only acts as a tiny tie-breaker. At `α = 1`, the route is pure shortest distance. The curve keeps middle slider values from saturating into the same path as 100% shade bias.
 
 **Night (sun below horizon at both endpoints):** `umbrastride_geo.sun.is_route_at_night()` forces shade fraction **S = 1** on every edge before building weights. Coolest and shortest then both minimize distance only. Response includes `sun_below_horizon: true`. Seed and shade-worker synthetic modes apply the same rule when profiling at night.
 

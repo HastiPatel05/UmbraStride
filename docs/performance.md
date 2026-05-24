@@ -258,7 +258,7 @@ data/routing-cache/az-phoenix/*.routing.pkl   # after warm or first route
 |--------------|--------|
 | Re-ran `bootstrap_aoi` / bootstrap script | GraphML mtime changes → pickle, edge index, routing cache rebuild |
 | Re-ran `seed_demo_cache` / precompute | SQLite mtime changes → shade array + routing cache rebuild |
-| Routing code or `SUN_AVERSION_BETA` | Delete `data/routing-cache/{aoi}/` or touch shade/graph to force rebuild |
+| Routing code, `SUN_AVERSION_BETA`, `SHADE_DISTANCE_TIEBREAK`, or `SHADE_BIAS_CURVE` | Delete `data/routing-cache/{aoi}/` or touch shade/graph to force rebuild |
 | Only restarted API | Disk cache reused; startup warm reloads into RAM |
 
 Clear in-process caches without restart (Python REPL / tests):

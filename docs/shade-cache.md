@@ -139,15 +139,16 @@ print('buckets', s.list_buckets()[:8])
 ```
 L_sun   = L * (1 - S)
 L_shade = L * S
-weight  = α * L + (1 - α) * (L_sun * β + L_shade * ε)
+b       = (1 - α) ^ γ
+weight  = (1 - b) * L + b * (L_sun * β + L_shade * ε)
 ```
 
 - **α = 1** → shortest (distance only)  
 - **α = 0** → most shaded; shaded distance is only a tiny tie-breaker
-- **Slider** → blend  
+- **Slider** → curved blend, so midpoints stay meaningfully between shortest and most-shaded
 
 Code: `packages/routing-core/src/umbrastride_routing/weights.py`  
-Defaults: **β = 5** (`SUN_AVERSION_BETA`), **ε = 0.001** (`SHADE_DISTANCE_TIEBREAK`).
+Defaults: **β = 5** (`SUN_AVERSION_BETA`), **ε = 0.001** (`SHADE_DISTANCE_TIEBREAK`), **γ = 3** (`SHADE_BIAS_CURVE`).
 
 When the **sun is below the horizon** at both origin and destination, routing uses **uniform full shade** (S = 1). Coolest and shortest then share the **same path**.
 
@@ -198,6 +199,7 @@ See [Routing performance](performance.md) for full steps.
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `SUN_AVERSION_BETA` | `5.0` | Sun penalty |
+| `SHADE_BIAS_CURVE` | `3.0` | Curves the slider so 50% shade bias does not behave like 100% shade bias |
 | `ROUTING_DISK_CACHE` | `1` | Persist routing DiGraph |
 | `ROUTING_WARM_ON_STARTUP` | `1` | Warm on API boot |
 | `ROUTING_WARM_HOURS` | empty | Extra UTC hours at startup |

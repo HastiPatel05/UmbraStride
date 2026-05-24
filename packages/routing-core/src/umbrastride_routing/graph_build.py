@@ -6,6 +6,7 @@ import networkx as nx
 import numpy as np
 
 from umbrastride_geo.edges import edge_key, iter_edges
+from umbrastride_routing.weights import SHADE_BIAS_CURVE, SHADE_DISTANCE_TIEBREAK
 
 
 def alpha_weight_key(alpha: float) -> str:
@@ -21,21 +22,30 @@ def _beta() -> float:
 def _shade_distance_tiebreak() -> float:
     import os
 
-    return float(os.environ.get("SHADE_DISTANCE_TIEBREAK", "0.001"))
+    return float(os.environ.get("SHADE_DISTANCE_TIEBREAK", str(SHADE_DISTANCE_TIEBREAK)))
+
+
+def _shade_bias_curve() -> float:
+    import os
+
+    return max(0.1, float(os.environ.get("SHADE_BIAS_CURVE", str(SHADE_BIAS_CURVE))))
 
 
 def _weight_matrix(lengths: np.ndarray, shade: np.ndarray, alphas: list[float]) -> dict[str, np.ndarray]:
     """Vectorized edge weights for all alphas (uses NumPy/BLAS — multi-core on large graphs)."""
     beta = _beta()
     shade_tiebreak = _shade_distance_tiebreak()
+    shade_curve = _shade_bias_curve()
     a = np.asarray(alphas, dtype=np.float64)
     l = lengths.astype(np.float64, copy=False)
     s = shade.astype(np.float64, copy=False)
     a = np.clip(a, 0.0, 1.0)
+    shade_bias = np.power(1.0 - a, shade_curve)
+    distance_bias = 1.0 - shade_bias
     sun = l * (1.0 - s)
     shade_len = l * s
     shade_cost = sun[:, None] * beta + shade_len[:, None] * shade_tiebreak
-    w = a * l[:, None] + (1.0 - a) * shade_cost
+    w = distance_bias * l[:, None] + shade_bias * shade_cost
     return {alpha_weight_key(al): w[:, i] for i, al in enumerate(alphas)}
 
 

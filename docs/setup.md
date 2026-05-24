@@ -92,6 +92,8 @@ notepad apps\web\.env
 DATA_DIR=./data
 DEFAULT_AOI_ID=az-phoenix
 SUN_AVERSION_BETA=5.0
+SHADE_DISTANCE_TIEBREAK=0.001
+SHADE_BIAS_CURVE=3.0
 SNAP_MAX_DIST_M=1200
 
 # Performance (included in .env.example — recommended)

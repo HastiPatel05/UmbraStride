@@ -34,7 +34,8 @@ For each street segment with length `L` and shade fraction `S` (0 = sunny, 1 = f
 ```
 L_sun   = L × (1 - S)
 L_shade = L × S
-weight  = α × L + (1 - α) × (L_sun × β + L_shade × ε)
+b       = (1 - α) ^ γ
+weight  = (1 - b) × L + b × (L_sun × β + L_shade × ε)
 ```
 
 | Symbol | Meaning | Default in UmbraStride |
@@ -42,10 +43,12 @@ weight  = α × L + (1 - α) × (L_sun × β + L_shade × ε)
 | `α` | User preference | Slider 0–1; also fixed routes at 0 and 1 |
 | `β` | Sun aversion | `SUN_AVERSION_BETA=5` in `.env` |
 | `ε` | Shaded-distance tie-break | `SHADE_DISTANCE_TIEBREAK=0.001` in `.env` |
+| `γ` | Shade-bias curve | `SHADE_BIAS_CURVE=3` in `.env` |
 | `S` | Shade fraction along edge | From SQLite cache or 0.5 default |
 
 **Shortest path:** `α = 1` → weight = `L`.  
 **Most shade-friendly:** `α = 0` → minimize sunny distance first; shaded distance only breaks ties.
+Middle slider values use the curve so they remain visibly between shortest and most-shaded instead of saturating too early.
 
 Algorithm: **Dijkstra** on a directed graph minimizing sum of edge weights.
 
