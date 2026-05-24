@@ -70,11 +70,11 @@ The app **chooses this automatically** from your two clicks. You do not pick a c
 Use the **Date & time** field. This matters because:
 
 - **Shade** on streets changes with sun position.
-- The app looks up shade data for that time (or the nearest hour available).
+- The app syncs local shade data for that time, then computes routes from that bucket.
 
-**Important:** Shade data must exist for that day/hour. If you see a yellow note about *“nearest cached hour”*, the time you picked does not have exact data; routing still works but may be less accurate. An administrator can run the seed script for your dates (see [Shade cache — Time buckets](shade-cache.md#time-bucket-matching)).
+**Important:** With automatic local shade enabled, the selected bucket is generated before routing. If you see a yellow note about *“nearest cached hour”*, automatic sync is disabled or failed, so routing still works but may be less accurate. An administrator can run the seed script for your dates (see [Shade cache — Time buckets](shade-cache.md#keys-and-time-buckets)).
 
-**Night walks:** If the sun is down at **both** your start and end, the app treats every street as fully shaded. **Shortest** and **Coolest** should match (same orange and teal line). A sidebar note explains this. Your **purple** route can still differ if the slider is between Shade and Short. See [Day vs night routing](README.md#day-vs-night-routing-important) in the docs index.
+**Night walks:** If the sun is down at **both** your start and end, the app treats every street as fully shaded. **Shortest**, **Coolest**, and your slider route should match. A sidebar note explains this. See [Day vs night routing](README.md#day-vs-night-routing-important) in the docs index.
 
 ### 5. Adjust the preference slider
 

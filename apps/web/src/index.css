@@ -258,6 +258,15 @@ input[type="range"] {
   user-select: none;
 }
 
+.night-shade-wash {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.32);
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
 .shade-banner-ok {
   border-color: #2dd4bf44;
   color: #99f6e4;

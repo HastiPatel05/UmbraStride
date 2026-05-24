@@ -43,6 +43,7 @@ Copy from [`.env.example`](../.env.example).
 |----------|---------|-------------|
 | `DEFAULT_AOI_ID` | `az-phoenix` | Fallback AOI when resolution fails. Should match a **bootstrapped** preset. |
 | `SUN_AVERSION_BETA` | `5.0` | How strongly sunny street length is penalized when α→0 (shade preference). Higher = stronger avoidance of sun. |
+| `SHADE_DISTANCE_TIEBREAK` | `0.001` | Tiny cost applied to shaded distance when α→0, so 100% shade bias prioritizes avoiding sun over route length. |
 | `SNAP_MAX_DIST_M` | `1200` | Max distance (meters) to snap a click to the nearest walkable street node. |
 
 ### CPU parallelism (`0` = use all cores)

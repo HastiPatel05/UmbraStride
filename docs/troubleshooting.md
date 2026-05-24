@@ -172,7 +172,7 @@ Wait until bootstrap finishes (wide Phoenix can take several minutes).
    python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date 2026-05-22
    ```
 
-2. Match the web app **datetime** to seeded hours, or read the sidebar note about “nearest cached hour.”
+2. Make sure `AUTO_SHADE_SEED=1` is enabled, or match the web app **datetime** to seeded hours.
 3. Restart API after seeding.
 
 ### Routes very slow first time, then OK
@@ -222,7 +222,7 @@ Or set `ROUTING_PATH_ENGINE=networkx` in `.env` (slower).
 
 **Cause:** No SQLite rows for exact 15-minute bucket.
 
-**Fix:** Seed that hour or accept nearest-hour fallback (documented in [Shade cache](shade-cache.md)).
+**Fix:** Enable `AUTO_SHADE_SEED=1`, seed that hour, or accept nearest-hour fallback (documented in [Shade cache](shade-cache.md)).
 
 ---
 

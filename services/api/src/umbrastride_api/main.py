@@ -24,12 +24,12 @@ from umbrastride_geo import (
     presets_containing_both,
 )
 from umbrastride_geo.regions import bbox_to_str, estimate_tile_count, get_preset, iter_tile_bboxes
-from umbrastride_routing import ShadeStore, compute_routes, ensure_synthetic_shade_bucket, schedule_synthetic_shade_seed, warm_routing_cache
+from umbrastride_routing import ShadeStore, compute_routes, ensure_synthetic_shade_bucket, warm_routing_cache
 from umbrastride_routing.shade_store import floor_ts_bucket
 
 load_dotenv()
 
-SHADE_AUTO_SYNC_SEC = int(os.environ.get("SHADE_AUTO_SYNC_SEC", "300"))
+SHADE_AUTO_SYNC_SEC = int(os.environ.get("SHADE_AUTO_SYNC_SEC", "600"))
 AUTO_SHADE_SEED = os.environ.get("AUTO_SHADE_SEED", "1").strip().lower() not in (
     "0",
     "false",
@@ -375,7 +375,7 @@ def post_route(body: RouteRequest):
 
     try:
         if _auto_shade_enabled():
-            schedule_synthetic_shade_seed(aoi_id, dt)
+            ensure_synthetic_shade_bucket(aoi_id, dt)
         result = compute_routes(
             aoi_id,
             body.origin.lng,

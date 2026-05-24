@@ -46,6 +46,24 @@ def _haversine_m(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
     return float(2 * r * np.arcsin(np.sqrt(a)))
 
 
+def _alpha_from_weight_attr(weight_attr: str) -> float | None:
+    if not weight_attr.startswith("w_"):
+        return None
+    try:
+        return max(0.0, min(1.0, float(weight_attr[2:])))
+    except ValueError:
+        return None
+
+
+def _formula_min_ratio(weight_attr: str) -> float | None:
+    alpha = _alpha_from_weight_attr(weight_attr)
+    if alpha is None:
+        return None
+    beta = float(os.environ.get("SUN_AVERSION_BETA", "5.0"))
+    shade_tiebreak = float(os.environ.get("SHADE_DISTANCE_TIEBREAK", "0.001"))
+    return alpha + (1.0 - alpha) * min(beta, shade_tiebreak)
+
+
 def _heuristic_scale(D: nx.DiGraph, weight_attr: str) -> float:
     """Scale straight-line distance so A* heuristic stays admissible for positive weights."""
     samples: list[float] = []
@@ -57,8 +75,10 @@ def _heuristic_scale(D: nx.DiGraph, weight_attr: str) -> float:
         if len(samples) >= 256:
             break
     if not samples:
-        return 1.0
-    return float(min(samples))
+        return _formula_min_ratio(weight_attr) or 1.0
+    scale = float(min(samples))
+    formula_min = _formula_min_ratio(weight_attr)
+    return min(scale, formula_min) if formula_min is not None else scale
 
 
 def _build_rx_index(D: nx.DiGraph) -> tuple[rx.PyDiGraph, dict[Any, int], list[Any]]:

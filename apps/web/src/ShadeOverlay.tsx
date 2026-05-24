@@ -109,6 +109,7 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.46 }: Props) {
   const [zoomOk, setZoomOk] = useState(true);
   const [buildingCount, setBuildingCount] = useState(0);
   const [shadowCount, setShadowCount] = useState(0);
+  const [nightMode, setNightMode] = useState(false);
   const [sunLabel, setSunLabel] = useState("");
   const [hint, setHint] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -117,6 +118,24 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.46 }: Props) {
     if (!map) return;
 
     const zoom = map.getZoom();
+    const center = map.getCenter();
+    const sun = getSunPosition(datetimeRef.current, center.lat, center.lng);
+    setNightMode(sun.belowHorizon);
+    setSunLabel(
+      sun.belowHorizon
+        ? "Sun below horizon"
+        : `Sun ${sun.altitudeDeg.toFixed(0)}° alt`
+    );
+
+    if (sun.belowHorizon) {
+      clearShadowLayer(map);
+      setBuildingCount(0);
+      setShadowCount(0);
+      setHint(null);
+      setStatus("ready");
+      return;
+    }
+
     const ok = zoom >= SHADE_MIN_ZOOM;
     setZoomOk(ok);
 
@@ -124,6 +143,7 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.46 }: Props) {
       clearShadowLayer(map);
       setBuildingCount(0);
       setShadowCount(0);
+      setNightMode(false);
       setHint(`Zoom in to level ${SHADE_MIN_ZOOM}+ (current ${zoom.toFixed(1)})`);
       setStatus("ready");
       return;
@@ -136,14 +156,6 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.46 }: Props) {
       if (gen !== refreshGenRef.current) return;
 
       ensureShadowLayer(map, opacity);
-
-      const center = map.getCenter();
-      const sun = getSunPosition(datetimeRef.current, center.lat, center.lng);
-      setSunLabel(
-        sun.belowHorizon
-          ? "Sun below horizon"
-          : `Sun ${sun.altitudeDeg.toFixed(0)}° alt`
-      );
 
       const cacheKey = mapViewCacheKey(map);
       let buildings = buildingCacheRef.current?.key === cacheKey
@@ -173,8 +185,6 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.46 }: Props) {
 
       if (buildings.length === 0) {
         setHint("No building footprints in view — pan/zoom or wait for tiles");
-      } else if (sun.belowHorizon) {
-        setHint("Sun is down — pick a daytime on the slider");
       } else if (nShadowBuildings === 0) {
         setHint(
           sun.altitudeDeg > 55
@@ -193,6 +203,7 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.46 }: Props) {
       if (gen !== refreshGenRef.current) return;
       const msg = e instanceof Error ? e.message : "Shadow update failed";
       setStatus("error");
+      setNightMode(false);
       setErrorMsg(msg);
       setHint(null);
       console.warn("Shadow refresh:", e);
@@ -263,10 +274,16 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.46 }: Props) {
       {status === "error" && (
         <div className="shade-banner shade-banner-warn">{errorMsg}</div>
       )}
+      {status === "ready" && nightMode && <div className="night-shade-wash" />}
+      {status === "ready" && nightMode && (
+        <div className="shade-banner shade-banner-ok">
+          Night shade · {sunLabel} · {new Date(datetime).toLocaleString()}
+        </div>
+      )}
       {status === "ready" && hint && (
         <div className="shade-banner shade-banner-warn">{hint}</div>
       )}
-      {status === "ready" && !hint && zoomOk && shadowCount > 0 && (
+      {status === "ready" && !nightMode && !hint && zoomOk && shadowCount > 0 && (
         <div className="shade-banner shade-banner-ok">
           Geometric shadows · {shadowCount}/{buildingCount} buildings · {sunLabel} ·{" "}
           {new Date(datetime).toLocaleString()}

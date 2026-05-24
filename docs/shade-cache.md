@@ -51,9 +51,11 @@ flowchart TB
 
 **Edge index:** `data/graphs/{aoi}.edge-index.json` maps each `edge_key` to a dense index so shade loads as a **NumPy array** (fast graph build).
 
-### Nearest-hour fallback
+### Bucket sync and nearest-hour fallback
 
-If exact bucket has no rows:
+When automatic local shade is enabled, route requests sync the selected time bucket before computing routes. The API also refreshes the active bucket in the background about every 10 minutes.
+
+If automatic shade is disabled or a bucket cannot be generated, the router can fall back:
 
 1. API uses **nearest cached hour**.
 2. Response: `shade_cache_exact: false`, `shade_ts_bucket` = actual bucket.
@@ -137,15 +139,15 @@ print('buckets', s.list_buckets()[:8])
 ```
 L_sun   = L * (1 - S)
 L_shade = L * S
-weight  = α * L + (1 - α) * (L_sun * β + L_shade)
+weight  = α * L + (1 - α) * (L_sun * β + L_shade * ε)
 ```
 
 - **α = 1** → shortest (distance only)  
-- **α = 0** → coolest (sun × β)  
+- **α = 0** → most shaded; shaded distance is only a tiny tie-breaker
 - **Slider** → blend  
 
 Code: `packages/routing-core/src/umbrastride_routing/weights.py`  
-Default **β = 5** (`SUN_AVERSION_BETA`).
+Defaults: **β = 5** (`SUN_AVERSION_BETA`), **ε = 0.001** (`SHADE_DISTANCE_TIEBREAK`).
 
 When the **sun is below the horizon** at both origin and destination, routing uses **uniform full shade** (S = 1). Coolest and shortest then share the **same path**.
 

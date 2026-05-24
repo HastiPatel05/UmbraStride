@@ -7,7 +7,8 @@ import { resolveAoiForRoute, resolvePresetForPoint } from "./resolveAoi";
 const DEFAULT_AOI = import.meta.env.VITE_DEFAULT_AOI || "az-phoenix";
 const PHOENIX_CENTER: [number, number] = [-112.07, 33.48];
 const PHOENIX_ZOOM = 16;
-const SHADE_AUTO_SYNC_MS = 5 * 60 * 1000;
+const SHADE_AUTO_SYNC_MS = 10 * 60 * 1000;
+const ROUTE_AUTO_REFRESH_MS = 450;
 
 function toLocalDatetimeValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -43,6 +44,7 @@ export default function App() {
   const [shadeCacheNote, setShadeCacheNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const routeRefreshTimerRef = useRef<number | null>(null);
   const hasRoutesRef = useRef(false);
   hasRoutesRef.current = routes.length > 0;
 
@@ -165,7 +167,7 @@ export default function App() {
           );
         } else if (result.shade_cache_exact === false && result.shade_ts_bucket) {
           setShadeCacheNote(
-            `Updating shade for ${result.ts_bucket}… (auto-sync runs every 5 min)`
+            `Updating shade for ${result.ts_bucket}… (auto-sync runs every 10 min)`
           );
         } else {
           setShadeCacheNote(null);
@@ -200,12 +202,12 @@ export default function App() {
     ]
   );
 
-  // Auto-seed shade for the selected time; refresh every 5 minutes.
+  // Auto-seed shade for the selected time; refresh every 10 minutes.
   useEffect(() => {
     if (regionLoadFailed || !bootstrapped.has(aoiId)) return;
 
     const sync = (refreshRoutes: boolean) => {
-      // Fire-and-forget — never block routing on shade seed (can take minutes on az-phoenix).
+      // Keep the cache fresh in the background; route requests also sync their selected bucket.
       void syncShadeCache(aoiId, datetimeIso).then(() => {
         if (refreshRoutes && hasRoutesRef.current && origin && destination) {
           void findRoutes({ silent: true });
@@ -224,6 +226,17 @@ export default function App() {
     destination,
     findRoutes,
   ]);
+
+  useEffect(() => {
+    if (!hasRoutesRef.current || !origin || !destination) return;
+    if (routeRefreshTimerRef.current) window.clearTimeout(routeRefreshTimerRef.current);
+    routeRefreshTimerRef.current = window.setTimeout(() => {
+      void findRoutes({ silent: true });
+    }, ROUTE_AUTO_REFRESH_MS);
+    return () => {
+      if (routeRefreshTimerRef.current) window.clearTimeout(routeRefreshTimerRef.current);
+    };
+  }, [alpha, datetimeIso, origin, destination, findRoutes]);
 
   return (
     <div className="app">

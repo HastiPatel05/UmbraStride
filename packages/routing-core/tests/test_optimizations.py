@@ -7,7 +7,7 @@ from umbrastride_routing.disk_cache import (
     save_routing_digraph,
 )
 from umbrastride_routing.graph_build import alpha_weight_key, build_routing_digraph
-from umbrastride_routing.pathfind import corridor_subgraph, shortest_path
+from umbrastride_routing.pathfind import _heuristic_scale, corridor_subgraph, shortest_path
 
 
 def test_build_routing_digraph_with_shade_array():
@@ -19,6 +19,16 @@ def test_build_routing_digraph_with_shade_array():
     key_to_index = {"1|2|0": 0}
     D = build_routing_digraph(G, shade, [0.0, 1.0], edge_key_to_index=key_to_index)
     assert D[1][2][alpha_weight_key(1.0)] == 100.0
+
+
+def test_astar_heuristic_scale_respects_shade_tiebreak(monkeypatch):
+    monkeypatch.setenv("SHADE_DISTANCE_TIEBREAK", "0.001")
+    D = nx.DiGraph()
+    D.add_node(1, x=0.0, y=0.0)
+    D.add_node(2, x=0.001, y=0.0)
+    D.add_edge(1, 2, **{alpha_weight_key(0.0): 100.0, "length_m": 100.0})
+
+    assert _heuristic_scale(D, alpha_weight_key(0.0)) == 0.001
 
 
 def test_disk_cache_roundtrip(tmp_path, monkeypatch):
