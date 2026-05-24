@@ -68,7 +68,7 @@ async function getBuildings(points: LngLat[]): Promise<BuildingFootprint[]> {
 
 /**
  * Building-aware shade using OSM footprints + sun position (Overpass + SunCalc).
- * More realistic than pure synthetic when SHADEMAP_API_KEY is set; not full ShadeMap ray tracing.
+ * More realistic than pure synthetic, with no ShadeMap API dependency.
  */
 export async function buildingAwareShadeProfile(
   points: LngLat[],

@@ -4,7 +4,7 @@ UmbraStride uses two environment files. You copy the examples once, then edit va
 
 | File | Who reads it | Purpose |
 |------|----------------|---------|
-| [`.env`](../.env.example) | Python API, scripts | Data paths, routing, ShadeMap server key |
+| [`.env`](../.env.example) | Python API, scripts | Data paths, routing, shade worker mode |
 | [`apps/web/.env`](../apps/web/.env.example) | Web app (Vite) | Map API keys, default AOI hint |
 
 **Rule:** After changing `.env` files, **restart** the API and web dev servers.
@@ -15,11 +15,11 @@ UmbraStride uses two environment files. You copy the examples once, then edit va
 
 Copy from [`.env.example`](../.env.example).
 
-### Required for real ShadeMap server / precompute
+### Optional shade worker profile mode
 
 | Variable | Example | Description |
 |----------|---------|-------------|
-| `SHADEMAP_API_KEY` | `eyJ...` | API key from [shademap.app/about](https://shademap.app/about/). Used by shade worker and server-side tools—not the browser key. |
+| `SHADE_PROFILE_MODE` | `synthetic` | `synthetic` uses demo shade. `building-aware` uses Overpass + SunCalc with no ShadeMap API key. |
 
 ### Data and server
 
@@ -94,7 +94,6 @@ Copy from [`apps/web/.env.example`](../apps/web/.env.example).
 
 | Variable | Required? | Description |
 |----------|-------------|-------------|
-| `VITE_SHADEMAP_API_KEY` | For live shadows | Browser ShadeMap key ([get one](https://shademap.app/about/)). **Separate** from root `SHADEMAP_API_KEY` in practice—use the same key value in both unless ShadeMap docs say otherwise. |
 | `VITE_MAPBOX_ACCESS_TOKEN` | No | If set, uses Mapbox Streets as basemap instead of OpenFreeMap. 3D buildings still use OpenFreeMap tiles when extrusions are added. |
 | `VITE_DEFAULT_AOI` | No | Initial AOI hint (`az-phoenix`). App **overrides** from map clicks when region data loads. |
 | `VITE_API_URL` | No | Default `/api` (Vite proxy to port 8000 in dev). Set full URL if API is elsewhere. |
@@ -119,23 +118,21 @@ SUN_AVERSION_BETA=5.0
 VITE_DEFAULT_AOI=az-phoenix
 ```
 
-ShadeMap keys can be empty for routing with **synthetic** seeded shade.
+No ShadeMap key is required for routing or live map shadows.
 
 ---
 
 ## Recommended production-like local setup
 
 ```env
-# .env
-SHADEMAP_API_KEY=your_key
 DATA_DIR=./data
 DEFAULT_AOI_ID=az-phoenix
 SNAP_MAX_DIST_M=1200
+SHADE_PROFILE_MODE=synthetic
 ```
 
 ```env
 # apps/web/.env
-VITE_SHADEMAP_API_KEY=your_key
 VITE_DEFAULT_AOI=az-phoenix
 ```
 
@@ -151,8 +148,7 @@ python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14
 ## Security notes
 
 - **Do not commit** `.env` or `apps/web/.env` to git (they are gitignored).
-- API keys in `VITE_*` variables are **exposed to anyone** who can open your web app—restrict network access in production.
-- Use separate keys or quotas for development vs production if ShadeMap offers them.
+- Values in `VITE_*` variables are **exposed to anyone** who can open your web app. Restrict any Mapbox token by origin in production.
 
 ---
 

@@ -32,8 +32,15 @@ export type ArizonaRegion = {
 };
 
 export async function fetchArizonaRegion(): Promise<ArizonaRegion> {
-  const res = await fetch(`${API_BASE}/v1/regions/arizona`);
-  if (!res.ok) throw new Error("Failed to load Arizona region");
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/v1/regions/arizona`);
+  } catch {
+    throw new Error("Cannot reach API — start uvicorn on port 8000, then retry");
+  }
+  if (!res.ok) {
+    throw new Error(`Failed to load Arizona region (HTTP ${res.status})`);
+  }
   return res.json();
 }
 
@@ -42,7 +49,7 @@ export async function fetchRoute(params: {
   origin: LngLat;
   destination: LngLat;
   datetime: string;
-  alpha: number;
+  alpha?: number;
 }): Promise<{
   routes: RouteResult[];
   ts_bucket: string;
@@ -55,6 +62,23 @@ export async function fetchRoute(params: {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || res.statusText);
+  }
+  return res.json();
+}
+
+export async function syncShadeCache(
+  aoiId: string,
+  datetime: string,
+  force = false
+): Promise<{ status: string; seeded: boolean; ts_bucket: string }> {
+  const res = await fetch(`${API_BASE}/v1/aoi/${aoiId}/shade/sync`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ datetime, force }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

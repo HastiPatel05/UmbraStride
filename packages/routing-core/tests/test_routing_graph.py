@@ -53,6 +53,25 @@ def test_compute_routes_prefers_shade_at_alpha_zero(tmp_path, monkeypatch):
     assert coolest["shade_fraction"] >= shortest["shade_fraction"]
 
 
+def test_route_geometry_keeps_all_path_segments(tmp_path, monkeypatch):
+    """Regression: geometry must not drop segments when linemerge yields MultiLineString."""
+    _synthetic_graph(tmp_path, monkeypatch)
+    result = compute_routes(
+        "test",
+        0.0001,
+        0.0001,
+        0.0001,
+        0.0009,
+        datetime(2026, 5, 21, 12, 0, tzinfo=timezone.utc),
+        0.0,
+        compare_alphas=[1.0],
+    )
+    shortest = next(r for r in result["routes"] if r["label"] == "shortest")
+    geom = shortest["geometry"]
+    assert geom is not None
+    assert len(geom["coordinates"]) >= 3
+
+
 def test_compute_routes_shortest_equals_coolest_at_night(tmp_path, monkeypatch):
     """When sun is below horizon, uniform shade => same path for shortest and coolest."""
     _synthetic_graph(tmp_path, monkeypatch)

@@ -11,33 +11,9 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from umbrastride_geo.graph import edge_key, iter_edges, load_graph
-from umbrastride_geo.sun import NIGHT_UNIFORM_SHADE, is_sun_below_horizon
 from umbrastride_routing.cpu import worker_count
 from umbrastride_routing.shade_store import ShadeStore, floor_ts_bucket
-
-
-def _synthetic_shade(
-    lng: float, lat: float, hour: int, bearing_deg: float | None, *, dt: datetime
-) -> float:
-    """Mock shade with directional and corridor variation for visible demo routes."""
-    if is_sun_below_horizon(dt, lat, lng):
-        return NIGHT_UNIFORM_SHADE
-
-    sun_az = 180.0 + (hour - 12) * 15.0
-    sun_rad = math.radians(sun_az)
-    base = 0.28 + 0.10 * math.cos(math.radians((hour - 12) * 20))
-
-    if bearing_deg is not None:
-        seg = math.radians(bearing_deg)
-        align = abs(math.cos(seg - sun_rad))
-        street_factor = 0.42 * align
-    else:
-        street_factor = 0.18 * abs(math.sin(math.radians(lng * 1000 + lat * 1000)))
-
-    corridor = 0.22 * math.sin((lng + 112.08) * 9500 + hour * 0.7)
-    cross_street = 0.18 * math.cos((lat - 33.45) * 11000 - hour * 0.4)
-
-    return max(0.04, min(0.96, base + street_factor + corridor + cross_street))
+from umbrastride_routing.synthetic_seed import synthetic_shade_fraction
 
 
 def _serialize_edges(G) -> list[tuple]:
@@ -60,7 +36,6 @@ def _serialize_edges(G) -> list[tuple]:
 
 
 def _hour_rows(args: tuple) -> list[tuple]:
-    """Worker: build shade rows for one hour bucket."""
     hour, day, edge_rows = args
     dt = datetime.fromisoformat(f"{day}T{hour:02d}:00:00+00:00")
     tb = floor_ts_bucket(dt)
@@ -69,7 +44,7 @@ def _hour_rows(args: tuple) -> list[tuple]:
         if lng is None:
             sf = 0.5
         else:
-            sf = _synthetic_shade(lng, lat, hour, bearing, dt=dt)
+            sf = synthetic_shade_fraction(lng, lat, hour, bearing, dt=dt)
         out.append((ek, tb, sf, 5))
     return out
 

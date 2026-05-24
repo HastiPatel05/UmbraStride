@@ -73,7 +73,7 @@ flowchart TB
 | **L0** | API process RAM | API restart |
 | **L1** | Pickle + routing-cache on disk | GraphML or shade SQLite mtime changes |
 | **L2** | GraphML + shade SQLite | You re-bootstrap or re-seed |
-| **L3** | OSM / ShadeMap source | External data refresh |
+| **L3** | OSM / Overpass source | External data refresh |
 
 **In-memory (L0)** — LRU caches in `packages/routing-core/src/umbrastride_routing/cache.py`:
 

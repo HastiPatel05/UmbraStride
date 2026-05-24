@@ -6,7 +6,7 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - SHADEMAP_API_KEY=${SHADEMAP_API_KEY:-}
+      - SHADE_PROFILE_MODE=${SHADE_PROFILE_MODE:-synthetic}
       - SHADE_WORKER_CONCURRENCY=${SHADE_WORKER_CONCURRENCY:-2}
 
   api:

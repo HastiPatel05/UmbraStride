@@ -1,17 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import MapView from "./MapView";
-import {
-  fetchArizonaRegion,
-  fetchGraph,
-  fetchRoute,
-  type RouteResult,
-} from "./api";
+import { fetchArizonaRegion, fetchRoute, syncShadeCache, type RouteResult } from "./api";
 import { resolveAoiForRoute, resolvePresetForPoint } from "./resolveAoi";
 
 const DEFAULT_AOI = import.meta.env.VITE_DEFAULT_AOI || "az-phoenix";
 const PHOENIX_CENTER: [number, number] = [-112.07, 33.48];
-const PHOENIX_ZOOM = 13;
+const PHOENIX_ZOOM = 16;
+const SHADE_AUTO_SYNC_MS = 5 * 60 * 1000;
 
 function toLocalDatetimeValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -38,10 +34,23 @@ export default function App() {
   const [shadeCacheNote, setShadeCacheNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const hasRoutesRef = useRef(false);
+  hasRoutesRef.current = routes.length > 0;
 
-  const { data: region } = useQuery({
+  const {
+    data: region,
+    isError: regionLoadFailed,
+    error: regionLoadError,
+    isLoading: regionLoading,
+    isFetching: regionFetching,
+    refetch: refetchRegion,
+  } = useQuery({
     queryKey: ["region", "arizona"],
     queryFn: fetchArizonaRegion,
+    retry: 8,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) => (query.state.status === "error" ? 5000 : false),
   });
 
   const bootstrapped = useMemo(
@@ -79,13 +88,6 @@ export default function App() {
     });
   }, [region, origin, destination, bootstrapped]);
 
-  const { data: graph, error: graphError } = useQuery({
-    queryKey: ["graph", aoiId],
-    queryFn: () => fetchGraph(aoiId),
-    retry: false,
-    enabled: Boolean(aoiId),
-  });
-
   const datetimeIso = useMemo(() => new Date(datetime).toISOString(), [datetime]);
 
   const onPickPoint = useCallback(
@@ -96,55 +98,114 @@ export default function App() {
     []
   );
 
-  const findRoutes = async () => {
-    if (!origin || !destination) {
-      setError("Set origin and destination on the map");
-      return;
-    }
+  const findRoutes = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!origin || !destination) {
+        if (!opts?.silent) setError("Set origin and destination on the map");
+        return;
+      }
 
-    if (!bootstrapped.has(aoiId)) {
-      setError(
-        `No street network for this area (${activePresetName ?? aoiId}). ` +
-          `Run: python scripts/bootstrap_arizona.py --preset ${aoiId}`
-      );
-      return;
-    }
+      if (regionLoadFailed) {
+        if (!opts?.silent) {
+          setError(
+            "Cannot reach the API at http://127.0.0.1:8000. Start it in another terminal: " +
+              "source .venv/bin/activate && uvicorn umbrastride_api.main:app --reload --port 8000"
+          );
+        }
+        return;
+      }
 
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchRoute({
-        aoi_id: aoiId,
-        origin: { lng: origin[0], lat: origin[1] },
-        destination: { lng: destination[0], lat: destination[1] },
-        datetime: datetimeIso,
-        alpha,
+      if (regionLoading) {
+        if (!opts?.silent) setError("Loading area data from API…");
+        return;
+      }
+
+      if (!bootstrapped.has(aoiId)) {
+        if (!opts?.silent) {
+          setError(
+            `No street network for this area (${activePresetName ?? aoiId}). ` +
+              `Run: python scripts/bootstrap_arizona.py --preset ${aoiId}`
+          );
+        }
+        return;
+      }
+
+      if (!opts?.silent) {
+        setLoading(true);
+        setError(null);
+      }
+      try {
+        const result = await fetchRoute({
+          aoi_id: aoiId,
+          origin: { lng: origin[0], lat: origin[1] },
+          destination: { lng: destination[0], lat: destination[1] },
+          datetime: datetimeIso,
+          alpha,
+        });
+        setRoutes(result.routes);
+        if (result.sun_below_horizon) {
+          setShadeCacheNote(
+            "Sun is below the horizon — coolest and shortest routes use the same distance (full shade)."
+          );
+        } else if (result.shade_cache_exact === false && result.shade_ts_bucket) {
+          setShadeCacheNote(
+            `Updating shade for ${result.ts_bucket}… (auto-sync runs every 5 min)`
+          );
+        } else {
+          setShadeCacheNote(null);
+        }
+        if (result.aoi_id && result.aoi_id !== aoiId) {
+          setAoiId(result.aoi_id);
+          const p = region?.presets.find((x) => x.aoi_id === result.aoi_id);
+          if (p) setActivePresetName(p.name);
+        }
+      } catch (e) {
+        if (!opts?.silent) {
+          setError(e instanceof Error ? e.message : "Route failed");
+          setRoutes([]);
+        }
+      } finally {
+        if (!opts?.silent) setLoading(false);
+      }
+    },
+    [
+      origin,
+      destination,
+      regionLoadFailed,
+      regionLoading,
+      bootstrapped,
+      aoiId,
+      activePresetName,
+      datetimeIso,
+      alpha,
+      region?.presets,
+    ]
+  );
+
+  // Auto-seed shade for the selected time; refresh every 5 minutes.
+  useEffect(() => {
+    if (regionLoadFailed || !bootstrapped.has(aoiId)) return;
+
+    const sync = (refreshRoutes: boolean) => {
+      // Fire-and-forget — never block routing on shade seed (can take minutes on az-phoenix).
+      void syncShadeCache(aoiId, datetimeIso).then(() => {
+        if (refreshRoutes && hasRoutesRef.current && origin && destination) {
+          void findRoutes({ silent: true });
+        }
       });
-      setRoutes(result.routes);
-      if (result.sun_below_horizon) {
-        setShadeCacheNote(
-          "Sun is below the horizon — coolest and shortest routes use the same distance (full shade)."
-        );
-      } else if (result.shade_cache_exact === false && result.shade_ts_bucket) {
-        setShadeCacheNote(
-          `Shade data from nearest cached hour (${result.shade_ts_bucket}). ` +
-            `Run seed_demo_cache.py for your selected time, or match the datetime picker.`
-        );
-      } else {
-        setShadeCacheNote(null);
-      }
-      if (result.aoi_id && result.aoi_id !== aoiId) {
-        setAoiId(result.aoi_id);
-        const p = region?.presets.find((x) => x.aoi_id === result.aoi_id);
-        if (p) setActivePresetName(p.name);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Route failed");
-      setRoutes([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    const id = window.setInterval(() => sync(true), SHADE_AUTO_SYNC_MS);
+    return () => window.clearInterval(id);
+  }, [
+    aoiId,
+    datetimeIso,
+    bootstrapped,
+    regionLoadFailed,
+    origin,
+    destination,
+    findRoutes,
+  ]);
 
   return (
     <div className="app">
@@ -152,17 +213,30 @@ export default function App() {
         <h1>UmbraStride</h1>
         <p className="subtitle">Shadow-oriented walking — area picked from the map</p>
 
-        {activePresetName && (
-          <p className="hint" style={{ marginTop: 0 }}>
-            Active area: <strong>{activePresetName}</strong>
-            {!bootstrapped.has(aoiId) ? " (graph not loaded)" : ""}
+        {regionFetching && !region && (
+          <p className="hint">Connecting to API…</p>
+        )}
+
+        {regionLoadFailed && !regionFetching && (
+          <p className="error">
+            API not reachable — start:{" "}
+            <code>uvicorn umbrastride_api.main:app --reload --port 8000</code>
+            {regionLoadError instanceof Error ? ` (${regionLoadError.message})` : ""}
+            <button
+              type="button"
+              className="btn"
+              style={{ marginTop: "0.5rem", width: "100%", background: "#2a3548" }}
+              onClick={() => void refetchRegion()}
+            >
+              Retry connection
+            </button>
           </p>
         )}
 
-        {graphError && (
-          <p className="error">
-            No graph for this area. Run:{" "}
-            <code>python scripts/bootstrap_arizona.py --preset {aoiId}</code>
+        {activePresetName && (
+          <p className="hint" style={{ marginTop: 0 }}>
+            Active area: <strong>{activePresetName}</strong>
+            {!regionLoadFailed && !bootstrapped.has(aoiId) ? " (graph not loaded)" : ""}
           </p>
         )}
 
@@ -218,7 +292,7 @@ export default function App() {
           />
         </div>
 
-        <button className="btn" onClick={findRoutes} disabled={loading}>
+        <button className="btn" onClick={() => void findRoutes()} disabled={loading}>
           {loading ? "Routing…" : "Find routes"}
         </button>
 
@@ -245,7 +319,6 @@ export default function App() {
       </aside>
       <main>
         <MapView
-          graph={graph ?? null}
           routes={routes}
           origin={origin}
           destination={destination}

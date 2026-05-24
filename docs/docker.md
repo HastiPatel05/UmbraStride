@@ -15,7 +15,7 @@ From repo root:
 python scripts/bootstrap_arizona.py --preset az-phoenix
 python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14
 
-# Optional: copy .env for SHADEMAP_API_KEY (building-aware worker mode)
+# Optional: copy .env for SHADE_PROFILE_MODE (building-aware worker mode)
 cp .env.example .env
 
 docker compose build
@@ -38,7 +38,7 @@ Pass through from host `.env` or shell:
 
 | Variable | Service | Purpose |
 |----------|---------|---------|
-| `SHADEMAP_API_KEY` | shade-worker | Enables **building-aware** profiling (Overpass + sun) |
+| `SHADE_PROFILE_MODE` | shade-worker | `synthetic` or `building-aware` profiling (Overpass + SunCalc) |
 | `SHADE_WORKER_CONCURRENCY` | shade-worker | Parallel profile requests (default 2) |
 | `DEFAULT_AOI_ID` | api, web build | Default metro |
 | `ROUTING_WARM_ON_STARTUP` | api | Set `1` to warm routing on boot (slow first start) |
@@ -46,7 +46,7 @@ Pass through from host `.env` or shell:
 Example:
 
 ```bash
-SHADEMAP_API_KEY=your_key docker compose up --build
+SHADE_PROFILE_MODE=building-aware docker compose up --build
 ```
 
 ---
@@ -65,12 +65,12 @@ Bootstrap and seed on the **host** before `docker compose up`, or exec into the 
 
 ## Shade worker modes
 
-| `SHADEMAP_API_KEY` | Mode | Description |
-|--------------------|------|-------------|
-| empty | `synthetic` | Demo shade (matches `seed_demo_cache.py` style) |
-| set | `building-aware` | OSM buildings via Overpass + SunCalc sun position |
+| `SHADE_PROFILE_MODE` | Description |
+|----------------------|-------------|
+| `synthetic` | Demo shade (matches `seed_demo_cache.py` style) |
+| `building-aware` | OSM buildings via Overpass + SunCalc sun position |
 
-This is **not** full ShadeMap Playwright ray tracing; use `precompute_shade.py` with a running worker for batch cache fills.
+Use `precompute_shade.py` with a running worker for batch cache fills.
 
 ---
 

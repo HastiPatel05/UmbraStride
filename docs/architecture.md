@@ -65,7 +65,7 @@ Startup (when `ROUTING_WARM_ON_STARTUP=1`): same load/build path for `DEFAULT_AO
 | `packages/shade-engine` | TypeScript | Shared types for shade worker |
 | `services/api` | Python | FastAPI REST, startup warm, routing warm endpoint |
 | `services/shade-worker` | TypeScript | Batch `/profile` (synthetic or building-aware via Overpass) |
-| `apps/web` | TypeScript | React, MapLibre, OpenFreeMap 3D, ShadeMap overlay |
+| `apps/web` | TypeScript | React, MapLibre, OpenFreeMap 3D, local shadow overlay |
 
 ---
 
@@ -151,17 +151,17 @@ Full walkthrough: [Routing performance](performance.md).
 |-------|------------|
 | Basemap | [OpenFreeMap Bright](https://tiles.openfreemap.org/styles/bright) or Mapbox |
 | 3D buildings | OpenFreeMap `building` + MapLibre fill-extrusion |
-| Live shadows | `mapbox-gl-shadow-simulator` + building features |
+| Live shadows | SunCalc + local building shadow projection |
 | Routes | GeoJSON in `MapView.tsx` |
 
 ---
 
 ## Shade pipeline modes
 
-| Mode | Command | Quality | ShadeMap key |
-|------|---------|---------|--------------|
+| Mode | Command | Quality | External data |
+|------|---------|---------|---------------|
 | Demo synthetic | `seed_demo_cache.py` | Approximate | No |
-| Precompute | `precompute_shade.py` + worker | Real profiles | Yes |
+| Precompute | `precompute_shade.py` + worker | Building-aware profiles | Overpass when enabled |
 | Shade warm | `POST .../cache/warm` | Sample ping | Worker |
 | Routing warm | `POST .../routing/warm` | N/A (preload only) | No |
 
@@ -189,7 +189,7 @@ Dockerfiles and [Docker guide](docker.md) for API, web (nginx), and shade-worker
 
 ## Future work
 
-- Full ShadeMap Playwright / `mapbox-gl-shadow-simulator` batch profiling in headless browser.
+- Higher-fidelity batch shadow simulation for dense downtown scenes.
 - Single statewide graph (use metro presets or tiles instead).
 - Native mobile apps.
 

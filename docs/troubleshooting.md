@@ -81,13 +81,13 @@ uvicorn umbrastride_api.main:app --reload --host 127.0.0.1 --port 8000
 
 ### No live shadows (but buildings show)
 
-**Cause:** Missing `VITE_SHADEMAP_API_KEY` or zoom &lt; 15.
+**Cause:** Zoom &lt; 15, the sun is down, building tiles are still loading, or the selected time has very short midday shadows.
 
 **Fix:**
 
-1. Add key to `apps/web/.env`.
-2. Restart `npm run dev:web`.
-3. Zoom 15+, wait for “N buildings” banner.
+1. Zoom to **15+**.
+2. Pick a daytime morning or late-afternoon time.
+3. Wait for the **Geometric shadows** banner, or pan slightly to load fresh building tiles.
 
 ### Map shows wrong area / keeps jumping
 

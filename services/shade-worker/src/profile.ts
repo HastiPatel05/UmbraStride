@@ -5,7 +5,8 @@ import { syntheticShadeProfile } from "./synthetic.js";
 export type ProfileMode = "synthetic" | "building-aware";
 
 export function resolveProfileMode(): ProfileMode {
-  if (process.env.SHADEMAP_API_KEY?.trim()) {
+  const mode = process.env.SHADE_PROFILE_MODE?.trim().toLowerCase();
+  if (mode === "building-aware" || mode === "buildings" || mode === "osm") {
     return "building-aware";
   }
   return "synthetic";

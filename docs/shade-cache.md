@@ -94,7 +94,7 @@ Parallel: `SHADE_SEED_WORKERS=0` uses all cores.
 
 1. Sample points along each edge geometry.  
 2. Worker `/profile` at datetime `t`.  
-3. **With `SHADEMAP_API_KEY`:** building-aware (Overpass + SunCalc). **Without:** synthetic (matches seed script).  
+3. `SHADE_PROFILE_MODE=building-aware` uses Overpass + SunCalc. `synthetic` matches the seed script.
 4. `shade_fraction = shaded_points / N` → SQLite via `precompute_shade.py`.
 
 ```bash

@@ -4,7 +4,7 @@
   --text: #e8eef4;
   --muted: #8b9cb3;
   --accent: #3d9be9;
-  --shade-route: #2dd4bf;
+  --shade-route: #10b981;
   --short-route: #f97316;
   --user-route: #a78bfa;
   font-family: "DM Sans", system-ui, sans-serif;
@@ -127,6 +127,22 @@ input[type="range"] {
 
 .route-card.custom {
   border-left-color: var(--user-route);
+}
+
+.route-legend .legend-swatch {
+  font-weight: 600;
+}
+
+.legend-shortest {
+  color: var(--short-route);
+}
+
+.legend-coolest {
+  color: var(--shade-route);
+}
+
+.legend-custom {
+  color: var(--user-route);
 }
 
 .route-card h3 {

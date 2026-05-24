@@ -86,10 +86,10 @@ UmbraStride/
 
 - **No metro dropdown** — AOI from map clicks (widest matching preset).
 - **Default metro:** `az-phoenix` (Phoenix / Tempe / Scottsdale).
-- **Map:** [OpenFreeMap](https://openfreemap.org/) + 3D buildings; optional live shadows ([ShadeMap](https://shademap.app/about/)).
+- **Map:** [OpenFreeMap](https://openfreemap.org/) + 3D buildings + local geometric shadows.
 - **Performance:** pickle graph load, disk routing cache, rustworkx A*, API warm on startup.
 - **Night routing:** uniform full shade when sun is below horizon at both endpoints.
-- **Shade worker:** `synthetic` (demo) or `building-aware` (Overpass + SunCalc) when `SHADEMAP_API_KEY` is set.
+- **Shade worker:** `synthetic` (demo) or `building-aware` (Overpass + SunCalc) via `SHADE_PROFILE_MODE`.
 - **Docker:** `docker compose up` — see [Docker guide](docker.md).
 
 ---

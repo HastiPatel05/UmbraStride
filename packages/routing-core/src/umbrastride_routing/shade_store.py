@@ -90,6 +90,18 @@ class ShadeStore:
             ).fetchall()
         return {ek: float(sf) for ek, sf in rows}
 
+    def count_bucket_edges(self, ts_bucket: str) -> int:
+        """Fast count of edges with shade for a bucket (no full dict load)."""
+        with sqlite3.connect(self.path) as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(DISTINCT edge_key) FROM edge_shade
+                WHERE aoi_id = ? AND ts_bucket = ?
+                """,
+                (self.aoi_id, ts_bucket),
+            ).fetchone()
+        return int(row[0]) if row else 0
+
     def load_bucket_array(
         self,
         ts_bucket: str,

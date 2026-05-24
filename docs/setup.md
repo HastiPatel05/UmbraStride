@@ -16,7 +16,7 @@ Commands are given for **Linux / macOS (bash)** and **Windows (PowerShell)**.
 |------|----------------|------|
 | **Web** | Map in your browser | 5173 |
 | **API** | Computes routes, warms caches on startup | 8000 |
-| **Shade worker** (optional) | Real ShadeMap batch profiling | 3001 |
+| **Shade worker** (optional) | Batch shade profiling | 3001 |
 
 You also download **street data** once per metro (**bootstrap**) and **shade data** (**seed**) before routing works correctly.
 
@@ -29,7 +29,7 @@ You also download **street data** once per metro (**bootstrap**) and **shade dat
 | **Python** | 3.11+ | API, routing, scripts |
 | **Node.js** | 20+ | Web app, optional worker |
 | **Git** | any | Clone repo |
-| **Internet** | — | OSM, map tiles, optional ShadeMap |
+| **Internet** | — | OSM, map tiles, optional Overpass |
 | **Disk** | ~2 GB+ | Phoenix metro graph + cache |
 
 ### Windows
@@ -38,9 +38,9 @@ You also download **street data** once per metro (**bootstrap**) and **shade dat
 - Node: [nodejs.org](https://nodejs.org/) LTS
 - Use **PowerShell** or Git Bash
 
-### Optional: ShadeMap API key
+### Optional: building-aware precompute
 
-[shademap.app/about](https://shademap.app/about/) — for **live shadows** on the map and **real** shade precompute. **Not** required for demo routing with synthetic seed.
+Set `SHADE_PROFILE_MODE=building-aware` if you want worker precompute to use OSM building footprints from Overpass + SunCalc. Live map shadows do not need an API key.
 
 ---
 
@@ -110,7 +110,7 @@ Full reference: [Configuration](configuration.md).
 VITE_DEFAULT_AOI=az-phoenix
 ```
 
-Add `VITE_SHADEMAP_API_KEY=...` for live building shadows.
+Live building shadows use local SunCalc and building footprints; no browser shadow key is needed.
 
 ---
 
@@ -310,11 +310,11 @@ Walkthrough: [User guide](user-guide.md).
 ### Map tips
 
 - Zoom **15+** for 3D buildings ([OpenFreeMap](https://openfreemap.org/)).
-- Add `VITE_SHADEMAP_API_KEY` and restart web for **live shadows**.
+- Pick a daytime morning or late-afternoon time for longer **live shadows**.
 
 ---
 
-## 9. Optional: real ShadeMap precompute
+## 9. Optional: building-aware precompute
 
 ```bash
 # Terminals: API + worker running
@@ -322,7 +322,7 @@ source .venv/bin/activate
 python scripts/precompute_shade.py --aoi az-phoenix --hours 10,11,12,13,14
 ```
 
-Requires `SHADEMAP_API_KEY` in `.env`. See [Shade cache](shade-cache.md).
+Set `SHADE_PROFILE_MODE=building-aware` in `.env` for Overpass + SunCalc precompute. See [Shade cache](shade-cache.md).
 
 ---
 

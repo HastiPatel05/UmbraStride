@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -23,10 +24,46 @@ from umbrastride_geo import (
     presets_containing_both,
 )
 from umbrastride_geo.regions import bbox_to_str, estimate_tile_count, get_preset, iter_tile_bboxes
-from umbrastride_routing import ShadeStore, compute_routes, warm_routing_cache
+from umbrastride_routing import ShadeStore, compute_routes, ensure_synthetic_shade_bucket, schedule_synthetic_shade_seed, warm_routing_cache
 from umbrastride_routing.shade_store import floor_ts_bucket
 
 load_dotenv()
+
+SHADE_AUTO_SYNC_SEC = int(os.environ.get("SHADE_AUTO_SYNC_SEC", "300"))
+AUTO_SHADE_SEED = os.environ.get("AUTO_SHADE_SEED", "1").strip().lower() not in (
+    "0",
+    "false",
+    "no",
+    "off",
+)
+
+
+def _auto_shade_enabled() -> bool:
+    return AUTO_SHADE_SEED
+
+
+async def _shade_auto_sync_loop() -> None:
+    """Background: refresh synthetic shade for the current hour on bootstrapped AOIs."""
+    while True:
+        await asyncio.sleep(SHADE_AUTO_SYNC_SEC)
+        if not _auto_shade_enabled():
+            continue
+        now = datetime.now(timezone.utc)
+        for aoi in list_aois():
+            aoi_id = aoi.get("aoi_id", "")
+            if not aoi_id.startswith("az-"):
+                continue
+            try:
+                await asyncio.to_thread(
+                    ensure_synthetic_shade_bucket,
+                    aoi_id,
+                    now,
+                    force=False,
+                )
+            except FileNotFoundError:
+                continue
+            except Exception:
+                pass
 
 
 def _startup_warm_routing() -> None:
@@ -52,7 +89,15 @@ def _startup_warm_routing() -> None:
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
     _startup_warm_routing()
-    yield
+    sync_task = asyncio.create_task(_shade_auto_sync_loop())
+    try:
+        yield
+    finally:
+        sync_task.cancel()
+        try:
+            await sync_task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(title="UmbraStride API", version="0.1.0", lifespan=_lifespan)
@@ -98,6 +143,17 @@ class RoutingWarmRequest(BaseModel):
     datetime: str | None = None
     hours: list[int] | None = None
     alphas: list[float] | None = None
+
+
+class ShadeSyncRequest(BaseModel):
+    datetime: str | None = Field(
+        default=None,
+        description="ISO datetime for the shade bucket (default: now UTC)",
+    )
+    force: bool = Field(
+        default=False,
+        description="Re-seed even when the bucket already has coverage",
+    )
 
 
 class BootstrapRequest(BaseModel):
@@ -265,6 +321,28 @@ def routing_warm(aoi_id: str, body: RoutingWarmRequest | None = None):
     return {"status": "warmed", **result}
 
 
+@app.post("/v1/aoi/{aoi_id}/shade/sync")
+def shade_sync(aoi_id: str, body: ShadeSyncRequest | None = None):
+    """Ensure synthetic shade exists for the requested time bucket (auto-seed)."""
+    body = body or ShadeSyncRequest()
+    if body.datetime:
+        try:
+            dt = datetime.fromisoformat(body.datetime.replace("Z", "+00:00"))
+        except ValueError as e:
+            raise HTTPException(400, f"invalid datetime: {e}") from e
+    else:
+        dt = datetime.now(timezone.utc)
+
+    try:
+        result = ensure_synthetic_shade_bucket(aoi_id, dt, force=body.force)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+    except Exception as e:
+        raise HTTPException(500, str(e)) from e
+
+    return {"status": "ok", **result}
+
+
 @app.post("/v1/route")
 def post_route(body: RouteRequest):
     try:
@@ -296,6 +374,8 @@ def post_route(body: RouteRequest):
         )
 
     try:
+        if _auto_shade_enabled():
+            schedule_synthetic_shade_seed(aoi_id, dt)
         result = compute_routes(
             aoi_id,
             body.origin.lng,

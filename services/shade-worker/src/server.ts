@@ -40,7 +40,7 @@ app.get("/health", (_req, res) => {
     concurrency: CONCURRENCY,
     description:
       mode === "building-aware"
-        ? "OSM buildings + sun position (Overpass/SunCalc); set SHADEMAP_API_KEY"
+        ? "OSM buildings + sun position (Overpass/SunCalc); no ShadeMap API key"
         : "Synthetic shade (no API key); matches seed_demo_cache style",
   });
 });

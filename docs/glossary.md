@@ -98,11 +98,11 @@ Plain-language definitions for terms used in UmbraStride docs and the app.
 
 ## S
 
-**Seed (shade seed)** — Filling the shade cache with data. **Demo seed** uses synthetic shade (no ShadeMap account). **Precompute** uses the shade worker + real ShadeMap (when configured).
+**Seed (shade seed)** — Filling the shade cache with data. **Demo seed** uses synthetic shade. **Precompute** can use the shade worker in synthetic or building-aware mode.
 
 **Shade fraction** — For one street segment, the fraction of sample points **in shade** at a given time (0 = full sun, 1 = full shade). **50% shade** means half the segment length is shady on average.
 
-**ShadeMap** — Third-party service that simulates sun and building shadows on a map. Optional for **live shadow overlay** and for **real** shade cache precompute.
+**Shade worker** — Optional Node service that profiles shade for many points using synthetic or building-aware logic.
 
 **Shortest route** — Minimum distance path; shade ignored. Shown in **orange**.
 
@@ -124,7 +124,7 @@ Plain-language definitions for terms used in UmbraStride docs and the app.
 
 ## W
 
-**Worker (shade worker)** — Optional Node service that calls ShadeMap in a headless browser to profile many points. Used by `precompute_shade.py`, not required for demo routing.
+**Worker (shade worker)** — Optional Node service used by `precompute_shade.py`, not required for demo routing.
 
 ---
 
@@ -139,4 +139,4 @@ Plain-language definitions for terms used in UmbraStride docs and the app.
 | Purple line | Your preference route |
 | Blue outline | Active metro area (AOI bbox) |
 | Gray 3D blocks | Buildings (zoom 15+) |
-| Dark overlay | Live shadows (ShadeMap key + zoom 15+) |
+| Dark overlay | Live shadows (zoom 15+) |

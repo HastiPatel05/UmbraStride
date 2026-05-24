@@ -122,11 +122,9 @@ Each card shows:
 
 ### Live shadows (optional)
 
-If a ShadeMap API key is configured in `apps/web/.env`:
-
-- A banner may show **“2.5D shadows · N buildings”** when shadows are active.
+- A banner may show **“Geometric shadows · N buildings”** when shadows are active.
 - Shadows update when you change **date/time** or move the map.
-- Without a key, you still get 3D buildings and routing; only the **live shadow overlay** is off.
+- No ShadeMap API key is required. If shadows are missing, zoom to 15+ and choose a daytime with lower sun.
 
 ### Route lines
 
@@ -139,7 +137,7 @@ Routes follow **sidewalks and walkable streets** from OpenStreetMap, not straigh
 - **No turn-by-turn GPS navigation** — it shows a path on a map; you follow it yourself.
 - **No real-time weather** — shade comes from cached simulation or demo data, not live clouds.
 - **Not every address on Earth** — only prepared **Arizona metros** (and optional grid tiles).
-- **Shade worker** — optional batch profiling (`synthetic` without API key, `building-aware` with `SHADEMAP_API_KEY`); demo seed is enough for most local tests.
+- **Shade worker** — optional batch profiling (`synthetic` or `building-aware` with `SHADE_PROFILE_MODE`); demo seed is enough for most local tests.
 
 ---
 
@@ -163,7 +161,7 @@ The project is built for Arizona presets. Other regions would need new configura
 
 ### Do I need a ShadeMap account?
 
-**No** for basic routing with demo shade. **Yes** for live shadow visualization on the map and for high-fidelity shade precompute.
+**No.** Live map shadows and demo routing do not require ShadeMap. Optional building-aware precompute uses Overpass + SunCalc.
 
 ### How far apart can origin and destination be?
 

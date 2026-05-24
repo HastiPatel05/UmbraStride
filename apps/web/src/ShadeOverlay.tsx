@@ -1,17 +1,20 @@
 /**
- * Live 2.5D building shadows via ShadeMap (mapbox-gl-shadow-simulator).
- * Requires VITE_SHADEMAP_API_KEY — https://shademap.app/about/
+ * Live building shadows on the map — no ShadeMap API.
+ * Sun position: SunCalc (browser). Routing uses Python `astral` (same astronomy).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type maplibregl from "maplibre-gl";
-import { fetchBuildingsForMap, SHADE_MIN_ZOOM, waitForMapLoaded } from "./buildings";
-
-type ShadeMapInstance = {
-  addTo: (map: maplibregl.Map) => ShadeMapInstance;
-  remove: () => void;
-  setDate: (date: Date) => void;
-  setOpacity: (opacity: number) => void;
-};
+import { buildingShadowsGeoJSON } from "./buildingShadows";
+import {
+  type BuildingFeature,
+  fetchBuildingsForMap,
+  parseHeightMeters,
+  SHADE_MIN_ZOOM,
+  waitForMapLoaded,
+  waitForMapStyleReady,
+} from "./buildings";
+import { BUILDINGS_3D_LAYER_ID } from "./mapStyle";
+import { getSunPosition } from "./sun";
 
 type Props = {
   map: maplibregl.Map | null;
@@ -19,151 +22,254 @@ type Props = {
   opacity?: number;
 };
 
-const TERRAIN_SOURCE = {
-  tileSize: 256,
-  maxZoom: 15,
-  getSourceUrl: ({ x, y, z }: { x: number; y: number; z: number }) =>
-    `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`,
-  getElevation: ({ r, g, b }: { r: number; g: number; b: number }) =>
-    r * 256 + g + b / 256 - 32768,
-};
+const SHADOW_SOURCE_ID = "building-shadows";
+const SHADOW_LAYER_ID = "building-shadows-fill";
+const REFRESH_DEBOUNCE_MS = 800;
 
-export default function ShadeOverlay({ map, datetime, opacity = 0.55 }: Props) {
-  const apiKey = import.meta.env.VITE_SHADEMAP_API_KEY;
+function placeShadowLayersBelowBuildings(map: maplibregl.Map): void {
+  if (!map.getLayer(BUILDINGS_3D_LAYER_ID)) return;
+  if (map.getLayer(SHADOW_LAYER_ID)) {
+    map.moveLayer(SHADOW_LAYER_ID, BUILDINGS_3D_LAYER_ID);
+  }
+}
+
+function ensureShadowLayer(map: maplibregl.Map, opacity: number): void {
+  const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+
+  if (!map.getSource(SHADOW_SOURCE_ID)) {
+    map.addSource(SHADOW_SOURCE_ID, { type: "geojson", data: empty });
+  }
+
+  const beforeId = map.getLayer(BUILDINGS_3D_LAYER_ID)
+    ? BUILDINGS_3D_LAYER_ID
+    : undefined;
+
+  if (!map.getLayer(SHADOW_LAYER_ID)) {
+    map.addLayer(
+      {
+        id: SHADOW_LAYER_ID,
+        type: "fill",
+        source: SHADOW_SOURCE_ID,
+        paint: {
+          "fill-color": "#030711",
+          "fill-opacity": opacity,
+          "fill-antialias": true,
+        },
+      },
+      beforeId
+    );
+  } else {
+    map.setPaintProperty(SHADOW_LAYER_ID, "fill-opacity", opacity);
+  }
+
+  placeShadowLayersBelowBuildings(map);
+}
+
+function clearShadowLayer(map: maplibregl.Map): void {
+  const src = map.getSource(SHADOW_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+  src?.setData({ type: "FeatureCollection", features: [] });
+}
+
+function removeShadowLayer(map: maplibregl.Map): void {
+  if (map.getLayer(SHADOW_LAYER_ID)) map.removeLayer(SHADOW_LAYER_ID);
+  if (map.getSource(SHADOW_SOURCE_ID)) map.removeSource(SHADOW_SOURCE_ID);
+}
+
+function shadowBudgetForZoom(zoom: number): number {
+  if (zoom < 16) return 120;
+  if (zoom < 17) return 180;
+  return 260;
+}
+
+function mapViewCacheKey(map: maplibregl.Map): string {
+  const b = map.getBounds();
+  const round = (n: number) => n.toFixed(4);
+  return [
+    Math.floor(map.getZoom() * 2) / 2,
+    round(b.getWest()),
+    round(b.getSouth()),
+    round(b.getEast()),
+    round(b.getNorth()),
+  ].join("|");
+}
+
+export default function ShadeOverlay({ map, datetime, opacity = 0.46 }: Props) {
   const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-
-  const shadeRef = useRef<ShadeMapInstance | null>(null);
   const datetimeRef = useRef(datetime);
   datetimeRef.current = datetime;
 
-  const [status, setStatus] = useState<"off" | "loading" | "ready" | "error">(
-    apiKey ? "loading" : "off"
-  );
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshGenRef = useRef(0);
+  const buildingCacheRef = useRef<{
+    key: string;
+    buildings: BuildingFeature[];
+  } | null>(null);
+
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [zoomOk, setZoomOk] = useState(true);
   const [buildingCount, setBuildingCount] = useState(0);
+  const [shadowCount, setShadowCount] = useState(0);
+  const [sunLabel, setSunLabel] = useState("");
+  const [hint, setHint] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const loadBuildings = useCallback(async () => {
-    if (!map || map.getZoom() < SHADE_MIN_ZOOM) return [];
+  const refreshShadows = useCallback(async () => {
+    if (!map) return;
+
+    const zoom = map.getZoom();
+    const ok = zoom >= SHADE_MIN_ZOOM;
+    setZoomOk(ok);
+
+    if (!ok) {
+      clearShadowLayer(map);
+      setBuildingCount(0);
+      setShadowCount(0);
+      setHint(`Zoom in to level ${SHADE_MIN_ZOOM}+ (current ${zoom.toFixed(1)})`);
+      setStatus("ready");
+      return;
+    }
+
+    const gen = ++refreshGenRef.current;
+
     try {
       await waitForMapLoaded(map);
-      const features = await fetchBuildingsForMap(map, mapboxToken);
-      setBuildingCount(features.length);
-      return features;
+      if (gen !== refreshGenRef.current) return;
+
+      ensureShadowLayer(map, opacity);
+
+      const center = map.getCenter();
+      const sun = getSunPosition(datetimeRef.current, center.lat, center.lng);
+      setSunLabel(
+        sun.belowHorizon
+          ? "Sun below horizon"
+          : `Sun ${sun.altitudeDeg.toFixed(0)}° alt`
+      );
+
+      const cacheKey = mapViewCacheKey(map);
+      let buildings = buildingCacheRef.current?.key === cacheKey
+        ? buildingCacheRef.current.buildings
+        : null;
+      if (!buildings) {
+        buildings = await fetchBuildingsForMap(map, mapboxToken);
+        buildingCacheRef.current = { key: cacheKey, buildings };
+      }
+      if (gen !== refreshGenRef.current) return;
+
+      setBuildingCount(buildings.length);
+
+      const byHeight = [...buildings].sort(
+        (a, b) =>
+          parseHeightMeters((b.properties ?? {}) as Record<string, unknown>) -
+          parseHeightMeters((a.properties ?? {}) as Record<string, unknown>)
+      );
+      const shadowBudget = shadowBudgetForZoom(zoom);
+      const fc = buildingShadowsGeoJSON(byHeight.slice(0, shadowBudget), sun);
+      const nShadowBuildings = fc.features.length;
+      setShadowCount(nShadowBuildings);
+
+      const src = map.getSource(SHADOW_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+      src?.setData(fc);
+      map.triggerRepaint();
+
+      if (buildings.length === 0) {
+        setHint("No building footprints in view — pan/zoom or wait for tiles");
+      } else if (sun.belowHorizon) {
+        setHint("Sun is down — pick a daytime on the slider");
+      } else if (nShadowBuildings === 0) {
+        setHint(
+          sun.altitudeDeg > 55
+            ? "Sun is high — shadows are very short; try morning or late afternoon"
+            : "Could not build shadows — try panning slightly"
+        );
+      } else if (sun.altitudeDeg > 50) {
+        setHint("Tip: lower sun (morning/evening) casts longer, clearer shadows");
+      } else {
+        setHint(null);
+      }
+
+      setStatus("ready");
+      setErrorMsg(null);
     } catch (e) {
-      console.warn("Building fetch failed:", e);
-      setBuildingCount(0);
-      return [];
+      if (gen !== refreshGenRef.current) return;
+      const msg = e instanceof Error ? e.message : "Shadow update failed";
+      setStatus("error");
+      setErrorMsg(msg);
+      setHint(null);
+      console.warn("Shadow refresh:", e);
     }
-  }, [map, mapboxToken]);
+  }, [map, mapboxToken, opacity]);
+
+  const scheduleRefresh = useCallback(() => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => {
+      void refreshShadows();
+    }, REFRESH_DEBOUNCE_MS);
+  }, [refreshShadows]);
 
   useEffect(() => {
-    if (!map || !apiKey) {
-      setStatus("off");
+    if (!map) {
+      setStatus("loading");
       return;
     }
 
     let cancelled = false;
-    setStatus("loading");
-    setErrorMsg(null);
 
-    const updateZoomState = () => {
-      const ok = map.getZoom() >= SHADE_MIN_ZOOM;
-      setZoomOk(ok);
-      return ok;
-    };
-
-    const refreshShadows = async () => {
-      if (!shadeRef.current || !updateZoomState()) return;
-      shadeRef.current.setDate(new Date(datetimeRef.current));
-      // Rebuild shadow mesh when the viewport changes (new building tiles).
-      await loadBuildings();
-    };
-
-    const onMapChange = () => {
-      void refreshShadows();
-    };
-
-    (async () => {
+    const init = async () => {
       try {
-        const mod = await import("mapbox-gl-shadow-simulator");
-        const ShadeMap = mod.default as new (
-          opts: import("mapbox-gl-shadow-simulator").ShadeMapOptions
-        ) => ShadeMapInstance;
+        await waitForMapStyleReady(map);
         if (cancelled) return;
-
-        shadeRef.current?.remove();
-        const shadeMap = new ShadeMap({
-          apiKey,
-          date: new Date(datetimeRef.current),
-          color: "#0a1628",
-          opacity,
-          terrainSource: TERRAIN_SOURCE,
-          getFeatures: async () => {
-            if (!map || map.getZoom() < SHADE_MIN_ZOOM) return [];
-            return loadBuildings();
-          },
-        });
-
-        shadeMap.addTo(map);
-        shadeRef.current = shadeMap;
-        setStatus("ready");
-        updateZoomState();
-        await loadBuildings();
-
-        map.on("moveend", onMapChange);
-        map.on("zoomend", onMapChange);
+        await refreshShadows();
       } catch (e) {
         if (!cancelled) {
           setStatus("error");
-          setErrorMsg(e instanceof Error ? e.message : "ShadeMap failed to load");
+          setErrorMsg(e instanceof Error ? e.message : "Shadow init failed");
         }
       }
-    })();
+    };
+
+    const onMapChange = () => scheduleRefresh();
+    const onStyleData = () => {
+      if (map.isStyleLoaded() && map.getLayer(BUILDINGS_3D_LAYER_ID)) {
+        buildingCacheRef.current = null;
+        scheduleRefresh();
+      }
+    };
+
+    void init();
+    map.on("moveend", onMapChange);
+    map.on("zoomend", onMapChange);
+    map.on("styledata", onStyleData);
 
     return () => {
       cancelled = true;
+      refreshGenRef.current += 1;
+      buildingCacheRef.current = null;
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       map.off("moveend", onMapChange);
       map.off("zoomend", onMapChange);
-      shadeRef.current?.remove();
-      shadeRef.current = null;
+      map.off("styledata", onStyleData);
+      removeShadowLayer(map);
     };
-  }, [map, apiKey, mapboxToken, opacity, loadBuildings]);
+  }, [map, scheduleRefresh, refreshShadows]);
 
   useEffect(() => {
-    if (status !== "ready" || !shadeRef.current || !map) return;
-    if (map.getZoom() >= SHADE_MIN_ZOOM) {
-      shadeRef.current.setDate(new Date(datetime));
-    }
-  }, [datetime, status, map]);
-
-  if (!apiKey) {
-    return (
-      <div className="shade-banner shade-banner-warn">
-        Add <code>VITE_SHADEMAP_API_KEY</code> in <code>apps/web/.env</code> for building shadows
-      </div>
-    );
-  }
+    if (!map) return;
+    void refreshShadows();
+  }, [datetime, map, refreshShadows]);
 
   return (
     <>
-      {status === "loading" && <div className="shade-banner">Loading ShadeMap…</div>}
+      {status === "loading" && <div className="shade-banner">Computing shadows…</div>}
       {status === "error" && (
         <div className="shade-banner shade-banner-warn">{errorMsg}</div>
       )}
-      {status === "ready" && !zoomOk && (
-        <div className="shade-banner shade-banner-warn">
-          Zoom in to level {SHADE_MIN_ZOOM}+ to see 3D buildings and shadows (OpenFreeMap)
-        </div>
+      {status === "ready" && hint && (
+        <div className="shade-banner shade-banner-warn">{hint}</div>
       )}
-      {status === "ready" && zoomOk && buildingCount === 0 && (
-        <div className="shade-banner shade-banner-warn">
-          Loading buildings… pan slightly or wait for tiles
-        </div>
-      )}
-      {status === "ready" && zoomOk && buildingCount > 0 && (
+      {status === "ready" && !hint && zoomOk && shadowCount > 0 && (
         <div className="shade-banner shade-banner-ok">
-          2.5D shadows · {buildingCount} buildings · {new Date(datetime).toLocaleString()}
+          Geometric shadows · {shadowCount}/{buildingCount} buildings · {sunLabel} ·{" "}
+          {new Date(datetime).toLocaleString()}
         </div>
       )}
     </>

@@ -17,8 +17,8 @@ On hot sunny days, the **shortest walk** may expose you to more sun. The paper b
 | Paper (Munich-focused) | UmbraStride (Arizona-focused) |
 |------------------------|-------------------------------|
 | Manually corrected OSM pedestrian network | OSMnx automatic `network_type=walk` + optional GeoJSON overrides |
-| LoD2 3D city models | OSM / OpenFreeMap building heights + ShadeMap simulator |
-| Ray-tracing-style shadow simulation | ShadeMap profiles + **cached** edge shade fractions |
+| LoD2 3D city models | OSM / OpenFreeMap building heights |
+| Ray-tracing-style shadow simulation | Local geometric shadows + **cached** edge shade fractions |
 | User preference cooler ↔ shorter | **Alpha slider** 0 (shade) → 1 (short) |
 | 3D scene verification | MapLibre 2D/2.5D map + optional live shadow layer |
 | Single study area workflow | **Metro presets** + optional statewide grid tiles |
@@ -57,11 +57,11 @@ Implementation: `packages/routing-core/src/umbrastride_routing/weights.py`.
 | Aspect | Paper | UmbraStride |
 |--------|-------|-------------|
 | Geometry | High-detail building models | OSM footprints + heights (tiles / Overpass) |
-| Simulation | Custom ray tracing | ShadeMap (`mapbox-gl-shadow-simulator`) |
+| Simulation | Custom ray tracing | Local SunCalc + geometric projection |
 | Storage | Paper-specific | SQLite per AOI + time bucket |
 | Demo without 3D | N/A | `seed_demo_cache.py` synthetic shade |
 
-For scientific comparison with the paper, treat **precomputed ShadeMap cache** as the closest mode; treat **demo seed** as a functional placeholder only.
+For scientific comparison with the paper, treat **building-aware precomputed cache** as the closest mode; treat **demo seed** as a functional placeholder only.
 
 ---
 
@@ -92,4 +92,4 @@ For scientific comparison with the paper, treat **precomputed ShadeMap cache** a
 
 ## Citing UmbraStride
 
-If you use this software in academic work, cite the **original paper** for the shadow-routing concept and describe UmbraStride as an open implementation with OSM + ShadeMap. Check the repo LICENSE (MIT) for code attribution.
+If you use this software in academic work, cite the **original paper** for the shadow-routing concept and describe UmbraStride as an open implementation with OSM building footprints and local solar geometry. Check the repo LICENSE (MIT) for code attribution.

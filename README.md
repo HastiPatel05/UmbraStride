@@ -27,7 +27,7 @@ UmbraStride builds walkable street networks from [OpenStreetMap](https://www.ope
 - **Coolest route** (teal) — prefers shadier street segments; may be longer. **At night** (sun down at both ends), same path as shortest.
 - **Your route** (purple) — based on the **shade ↔ short** slider.
 - **3D buildings** ([OpenFreeMap](https://openfreemap.org/) + [MapLibre 3D example](https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/)).
-- **Live building shadows** (optional) with a [ShadeMap](https://shademap.app/about/) API key.
+- **Live building shadows** from local SunCalc + building footprints (no ShadeMap API key).
 - **Automatic area selection** — no city dropdown; picks the right Arizona metro from map clicks.
 - **Night-aware routing** — when the sun is below the horizon at both ends, coolest and shortest use the **same path** (uniform full shade).
 
@@ -181,6 +181,6 @@ See [docs/configuration.md](docs/configuration.md).
 
 - **Code:** MIT — [LICENSE](LICENSE)
 - **Research:** Yu Feng et al., SIGSPATIAL 2024 — [doi.org/10.1145/3678717.3691287](https://doi.org/10.1145/3678717.3691287)
-- **Shadows:** [ShadeMap](https://shademap.app/)
+- **Shadows:** SunCalc + OSM/OpenFreeMap building footprints
 - **Streets:** [OpenStreetMap](https://www.openstreetmap.org/) via [OSMnx](https://osmnx.readthedocs.io/)
 - **Basemap / 3D:** [OpenFreeMap](https://openfreemap.org/)
