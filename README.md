@@ -57,58 +57,133 @@ flowchart LR
 
 ---
 
-## Quick start (technical)
+## Quick Start
 
 **Prerequisites:** Python 3.11+, Node.js 20+, ~2 GB disk for Phoenix metro.
 
 **Full steps:** [docs/setup.md](docs/setup.md)
 
-### 1. Clone and configure
+### 1. Clone
 
-```bash
+**macOS / Linux**
+
+```sh
 git clone https://github.com/HastiPatel05/UmbraStride.git
 cd UmbraStride
+```
+
+**Windows PowerShell**
+
+```powershell
+git clone https://github.com/HastiPatel05/UmbraStride.git
+cd UmbraStride
+```
+
+### 2. Configure
+
+**macOS / Linux**
+
+```sh
 cp .env.example .env
 cp apps/web/.env.example apps/web/.env
 ```
 
-### 2. Install dependencies
+**Windows PowerShell**
 
-```bash
+```powershell
+Copy-Item .env.example .env
+Copy-Item apps\web\.env.example apps\web\.env
+```
+
+No ShadeMap API key is required for live map shadows or demo routing.
+
+### 3. Install Dependencies
+
+**macOS / Linux**
+
+```sh
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e "packages/geo-core[dev]" -e "packages/routing-core[dev]" -e "services/api[dev]"
 npm install
 ```
 
-### 3. Download streets + shade
+**Windows PowerShell**
 
-```bash
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e "packages/geo-core[dev]" -e "packages/routing-core[dev]" -e "services/api[dev]"
+npm install
+```
+
+If PowerShell blocks venv activation:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+.\.venv\Scripts\Activate.ps1
+```
+
+### 4. Download Streets And Seed Demo Shade
+
+**macOS / Linux**
+
+```sh
+source .venv/bin/activate
 python scripts/bootstrap_arizona.py --preset az-phoenix
 python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date 2026-05-22
 ```
 
-### 4. Run
+**Windows PowerShell**
 
-**Terminal 1 — API** (warms cache on startup if configured in `.env`):
+```powershell
+.\.venv\Scripts\Activate.ps1
+python scripts/bootstrap_arizona.py --preset az-phoenix
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date 2026-05-22
+```
 
-```bash
+### 5. Run
+
+Use two terminals.
+
+**Terminal 1: API, macOS / Linux**
+
+```sh
+source .venv/bin/activate
 uvicorn umbrastride_api.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-**Terminal 2 — Web:**
+**Terminal 1: API, Windows PowerShell**
 
-```bash
+```powershell
+.\.venv\Scripts\Activate.ps1
+uvicorn umbrastride_api.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+**Terminal 2: Web, macOS / Linux / Windows**
+
+```sh
 npm run dev:web
 ```
 
 Open **http://localhost:5173** — [User walkthrough](docs/user-guide.md)
 
-**Optional — warm routing before demo:**
+### Optional: Warm Routing Before A Demo
 
-```bash
+**macOS / Linux**
+
+```sh
 curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
   -H "Content-Type: application/json" \
   -d '{"hours": [10, 11, 12, 13, 14]}'
+```
+
+**Windows PowerShell**
+
+```powershell
+Invoke-RestMethod -Method Post `
+  -Uri http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm `
+  -ContentType "application/json" `
+  -Body '{"hours": [10, 11, 12, 13, 14]}'
 ```
 
 ---
@@ -153,6 +228,11 @@ curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
 # .env
 DATA_DIR=./data
 DEFAULT_AOI_ID=az-phoenix
+AUTO_SHADE_SEED=1
+SHADE_AUTO_SYNC_SEC=600
+SUN_AVERSION_BETA=5.0
+SHADE_DISTANCE_TIEBREAK=0.001
+SHADE_BIAS_CURVE=3.0
 ROUTING_WARM_ON_STARTUP=1
 ROUTING_WARM_HOURS=10,11,12,13,14
 
@@ -170,7 +250,7 @@ See [docs/configuration.md](docs/configuration.md).
 |---------|---------|
 | `python scripts/bootstrap_arizona.py --preset az-phoenix` | Download walk streets |
 | `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14` | Synthetic shade (day); night hours get uniform full shade |
-| `git pull origin tanmay` + night seed (see [docs/setup.md](docs/setup.md#night-shade-buckets-after-pulling-tanmay)) | Night shade buckets (`pip install -e packages/geo-core` for astral) |
+| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5` | Optional night shade buckets |
 | `POST /v1/aoi/az-phoenix/routing/warm` | Preload routing cache |
 | `docker compose up` | API + worker + web — [docs/docker.md](docs/docker.md) |
 | `npm run dev:web` | Web dev server :5173 |
