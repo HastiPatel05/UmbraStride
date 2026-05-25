@@ -21,7 +21,8 @@ from umbrastride_geo import (
     load_region,
     resolve_aoi_for_point,
     resolve_aoi_for_route,
-    presets_containing_both,
+    routable_aois_containing_both,
+    tile_records,
 )
 from umbrastride_geo.regions import bbox_to_str, estimate_tile_count, get_preset, iter_tile_bboxes
 from umbrastride_routing import ShadeStore, compute_routes, ensure_synthetic_shade_bucket, warm_routing_cache
@@ -179,6 +180,7 @@ def get_region(region_id: str):
         raise HTTPException(404, str(e)) from e
     return {
         **region,
+        "tiles": tile_records(region),
         "tile_count": estimate_tile_count(region),
         "bootstrapped_aois": [a["aoi_id"] for a in list_aois() if a["aoi_id"].startswith("az-")],
     }
@@ -359,20 +361,20 @@ def post_route(body: RouteRequest):
         region_id="arizona",
     )
 
-    candidates = presets_containing_both(
+    candidates = routable_aois_containing_both(
         body.origin.lng,
         body.origin.lat,
         body.destination.lng,
         body.destination.lat,
         "arizona",
     )
-    if body.aoi_id and body.aoi_id not in candidates and not candidates:
+    if not candidates:
         raise HTTPException(
             400,
-            f"Origin and destination are outside the '{body.aoi_id}' metro bounds. "
-            "Move both points inside the same metro area or select a different metro.",
+            "Origin and destination must be inside one Arizona metro or the same Arizona tile. "
+            "For statewide coverage, bootstrap the tile that contains both points with: "
+            "python scripts/bootstrap_arizona.py --list-tiles",
         )
-
     try:
         if _auto_shade_enabled():
             ensure_synthetic_shade_bucket(aoi_id, dt)

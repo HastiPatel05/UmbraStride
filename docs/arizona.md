@@ -60,11 +60,22 @@ When you place **origin** and **destination** on the map:
 1. Find all presets whose **blue box** contains **both** points.
 2. Prefer the **largest** matching preset (wide Phoenix over downtown core when both fit).
 3. Prefer a preset that is **bootstrapped** (graph file exists on disk).
-4. Show the name under **Active area:** in the sidebar.
+4. If no metro preset contains both points, find a generated tile that contains both points.
+5. Prefer a bootstrapped tile when one is available.
+6. Show the name under **Active area:** in the sidebar.
 
 The API uses the same logic when you call `POST /v1/route` without `aoi_id`.
 
 **Example:** Clicks in downtown Phoenix → usually `az-phoenix` if that graph exists; otherwise falls back to `az-phoenix-core` if only that was bootstrapped.
+
+**Tile example:** Rural Arizona clicks inside one `az-tile-*` cell can route after bootstrapping that tile:
+
+```bash
+python scripts/bootstrap_arizona.py --tile az-tile--112.00_33.25
+python scripts/seed_demo_cache.py --aoi az-tile--112.00_33.25 --hours 10,11,12,13,14
+```
+
+Routes across multiple tiles are not supported as one route yet.
 
 Implementation: `packages/geo-core/src/umbrastride_geo/regions.py` and `apps/web/src/resolveAoi.ts`.
 
@@ -149,7 +160,7 @@ See [Routing performance](performance.md).
 | Endpoint | Purpose |
 |----------|---------|
 | `GET /v1/regions` | List region ids |
-| `GET /v1/regions/arizona` | Full manifest + `bootstrapped_aois` |
+| `GET /v1/regions/arizona` | Full manifest + generated `tiles` + `bootstrapped_aois` |
 | `GET /v1/regions/arizona/resolve?lng=&lat=` | AOI for one point |
 | `POST /v1/regions/arizona/bootstrap-preset` | Body `{"preset":"az-phoenix"}` — bootstrap via API |
 

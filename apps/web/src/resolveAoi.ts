@@ -40,25 +40,46 @@ function presetsContainingPoint(
     .sort((a, b) => presetArea(b.bbox) - presetArea(a.bbox));
 }
 
-/** Widest metro preset containing the point (e.g. Phoenix metro over downtown core). */
+function tilesContainingPoint(
+  lng: number,
+  lat: number,
+  region: ArizonaRegion
+): ArizonaPreset[] {
+  return (region.tiles ?? []).filter((p) => pointInBbox(lng, lat, p.bbox));
+}
+
+function allAois(region: ArizonaRegion): ArizonaPreset[] {
+  return [...region.presets, ...(region.tiles ?? [])];
+}
+
+function firstBootstrapped(
+  candidates: ArizonaPreset[],
+  bootstrapped?: Set<string>
+): ArizonaPreset | null {
+  if (!bootstrapped) return null;
+  return candidates.find((p) => bootstrapped.has(p.aoi_id)) ?? null;
+}
+
+/** Widest metro preset first, then same Arizona tile for statewide coverage. */
 export function resolvePresetForPoint(
   lng: number,
   lat: number,
   region: ArizonaRegion,
   bootstrapped?: Set<string>
 ): ArizonaPreset {
-  const containing = presetsContainingPoint(lng, lat, region);
-  if (bootstrapped) {
-    for (const p of containing) {
-      if (bootstrapped.has(p.aoi_id)) return p;
-    }
-  }
-  if (containing.length > 0) return containing[0];
-  return nearestPreset(lng, lat, region.presets);
+  const metroContaining = presetsContainingPoint(lng, lat, region);
+  const tileContaining = tilesContainingPoint(lng, lat, region);
+  return (
+    firstBootstrapped(metroContaining, bootstrapped) ??
+    firstBootstrapped(tileContaining, bootstrapped) ??
+    metroContaining[0] ??
+    tileContaining[0] ??
+    nearestPreset(lng, lat, allAois(region))
+  );
 }
 
 /**
- * Pick widest metro preset that contains both points (Phoenix metro over downtown).
+ * Pick widest metro preset that contains both points, then same Arizona tile.
  * Prefers bootstrapped graphs when available.
  */
 export function resolveAoiForRoute(
@@ -67,21 +88,32 @@ export function resolveAoiForRoute(
   region: ArizonaRegion,
   bootstrapped: Set<string>
 ): { aoiId: string; preset: ArizonaPreset } {
-  const containing = region.presets
+  const containingMetro = region.presets
     .filter(
       (p) =>
         pointInBbox(origin[0], origin[1], p.bbox) &&
         pointInBbox(destination[0], destination[1], p.bbox)
     )
     .sort((a, b) => presetArea(b.bbox) - presetArea(a.bbox));
+  const containingTiles = (region.tiles ?? []).filter(
+    (p) =>
+      pointInBbox(origin[0], origin[1], p.bbox) &&
+      pointInBbox(destination[0], destination[1], p.bbox)
+  );
 
-  for (const p of containing) {
-    if (bootstrapped.has(p.aoi_id)) {
-      return { aoiId: p.aoi_id, preset: p };
-    }
+  const bootstrappedMetro = firstBootstrapped(containingMetro, bootstrapped);
+  if (bootstrappedMetro) {
+    return { aoiId: bootstrappedMetro.aoi_id, preset: bootstrappedMetro };
   }
-  if (containing.length > 0) {
-    return { aoiId: containing[0].aoi_id, preset: containing[0] };
+  const bootstrappedTile = firstBootstrapped(containingTiles, bootstrapped);
+  if (bootstrappedTile) {
+    return { aoiId: bootstrappedTile.aoi_id, preset: bootstrappedTile };
+  }
+  if (containingMetro.length > 0) {
+    return { aoiId: containingMetro[0].aoi_id, preset: containingMetro[0] };
+  }
+  if (containingTiles.length > 0) {
+    return { aoiId: containingTiles[0].aoi_id, preset: containingTiles[0] };
   }
 
   const fallback = resolvePresetForPoint(origin[0], origin[1], region, bootstrapped);

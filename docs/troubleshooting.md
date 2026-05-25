@@ -129,11 +129,19 @@ Wait until bootstrap finishes (wide Phoenix can take several minutes).
 - Increase `SNAP_MAX_DIST_M` in `.env` (default 1200 m)—temporary workaround.
 - Ensure you are inside the prepared metro, not desert with no OSM paths.
 
-### Origin and destination outside metro bounds
+### Origin and destination outside AOI bounds
 
-**Cause:** Points in different metros or outside Arizona preset boxes.
+**Cause:** Points are in different metros, different grid tiles, or outside Arizona.
 
-**Fix:** Place both points inside the **blue outline** (active area). For cross-metro trips, bootstrap a larger AOI or two separate requests (not supported as one route today).
+**Fix:** Place both points inside the **blue outline** (active area). For rural Arizona, list and bootstrap the tile that contains both points:
+
+```bash
+python scripts/bootstrap_arizona.py --list-tiles
+python scripts/bootstrap_arizona.py --tile az-tile--112.00_33.25
+python scripts/seed_demo_cache.py --aoi az-tile--112.00_33.25 --hours 10,11,12,13,14
+```
+
+Cross-metro and multi-tile trips are not supported as one route today.
 
 ### “No route found between origin and destination”
 

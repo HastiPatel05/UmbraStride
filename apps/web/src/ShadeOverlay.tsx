@@ -169,14 +169,35 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.46 }: Props) {
 
       setBuildingCount(buildings.length);
 
-      const byHeight = [...buildings].sort(
+      let byHeight = [...buildings].sort(
         (a, b) =>
           parseHeightMeters((b.properties ?? {}) as Record<string, unknown>) -
           parseHeightMeters((a.properties ?? {}) as Record<string, unknown>)
       );
       const shadowBudget = shadowBudgetForZoom(zoom);
-      const fc = buildingShadowsGeoJSON(byHeight.slice(0, shadowBudget), sun);
-      const nShadowBuildings = fc.features.length;
+      let fc = buildingShadowsGeoJSON(byHeight.slice(0, shadowBudget), sun);
+      let nShadowBuildings = fc.features.length;
+      let usedOverpassFallback = false;
+
+      if (nShadowBuildings === 0 && buildings.length > 0 && sun.altitudeDeg <= 55) {
+        const fallbackBuildings = await fetchBuildingsForMap(map, mapboxToken, {
+          includeOverpass: true,
+        });
+        if (gen !== refreshGenRef.current) return;
+        usedOverpassFallback = true;
+        if (fallbackBuildings.length > 0) {
+          buildings = fallbackBuildings;
+          buildingCacheRef.current = { key: cacheKey, buildings };
+          setBuildingCount(buildings.length);
+          byHeight = [...buildings].sort(
+            (a, b) =>
+              parseHeightMeters((b.properties ?? {}) as Record<string, unknown>) -
+              parseHeightMeters((a.properties ?? {}) as Record<string, unknown>)
+          );
+          fc = buildingShadowsGeoJSON(byHeight.slice(0, shadowBudget), sun);
+          nShadowBuildings = fc.features.length;
+        }
+      }
       setShadowCount(nShadowBuildings);
 
       const src = map.getSource(SHADOW_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
@@ -184,12 +205,14 @@ export default function ShadeOverlay({ map, datetime, opacity = 0.46 }: Props) {
       map.triggerRepaint();
 
       if (buildings.length === 0) {
-        setHint("No building footprints in view — pan/zoom or wait for tiles");
+        setHint("No usable building footprints loaded here — zoom in, wait for tiles, or pan slightly");
       } else if (nShadowBuildings === 0) {
         setHint(
           sun.altitudeDeg > 55
             ? "Sun is high — shadows are very short; try morning or late afternoon"
-            : "Could not build shadows — try panning slightly"
+            : usedOverpassFallback
+              ? "No usable shadow geometry from local or Overpass footprints — try panning slightly"
+              : "No usable shadow geometry from map tile buildings — try panning slightly"
         );
       } else if (sun.altitudeDeg > 50) {
         setHint("Tip: lower sun (morning/evening) casts longer, clearer shadows");

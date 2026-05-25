@@ -46,6 +46,7 @@ Returns manifest from `data/regions/arizona.json` plus:
 | Field | Description |
 |-------|-------------|
 | `presets` | Metro AOIs with bbox and names |
+| `tiles` | Generated Arizona grid AOIs with bbox and names |
 | `default_aoi` | Fallback AOI id |
 | `default_center` | Map center `[lng, lat]` |
 | `default_zoom` | Suggested zoom |
@@ -54,7 +55,7 @@ Returns manifest from `data/regions/arizona.json` plus:
 
 ### `GET /v1/regions/{region_id}/resolve?lng=&lat=`
 
-Pick metro AOI for a single point (widest containing preset).
+Pick an AOI for a single point. Metro presets are preferred; generated tile AOIs are used for on-demand Arizona coverage outside metro presets.
 
 **Example:** `GET /v1/regions/arizona/resolve?lng=-112.07&lat=33.45`
 

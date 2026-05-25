@@ -369,7 +369,8 @@ function mergeBuildingLists(lists: BuildingFeature[][]): BuildingFeature[] {
 
 export async function fetchBuildingsForMap(
   map: maplibregl.Map,
-  mapboxToken?: string
+  mapboxToken?: string,
+  options: { includeOverpass?: boolean } = {}
 ): Promise<BuildingFeature[]> {
   if (map.getZoom() < MIN_ZOOM) return [];
 
@@ -386,12 +387,12 @@ export async function fetchBuildingsForMap(
 
   const localResults = await Promise.all(localTasks);
   const localMerged = mergeBuildingLists(localResults);
-  if (localMerged.length > 0) return localMerged;
+  if (localMerged.length > 0 && !options.includeOverpass) return localMerged;
 
   try {
-    return mergeBuildingLists([await fetchOverpassBuildings(map)]);
+    return mergeBuildingLists([localMerged, await fetchOverpassBuildings(map)]);
   } catch (e) {
     console.warn("Overpass building fetch failed:", e);
-    return [];
+    return localMerged;
   }
 }

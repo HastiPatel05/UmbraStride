@@ -28,10 +28,10 @@ UmbraStride builds walkable street networks from [OpenStreetMap](https://www.ope
 - **Your route** (purple) — based on the **shade ↔ short** slider.
 - **3D buildings** ([OpenFreeMap](https://openfreemap.org/) + [MapLibre 3D example](https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/)).
 - **Live building shadows** from local SunCalc + building footprints (no ShadeMap API key).
-- **Automatic area selection** — no city dropdown; picks the right Arizona metro from map clicks.
+- **Automatic area selection** — no city dropdown; picks the right Arizona metro or same-tile AOI from map clicks.
 - **Night-aware routing** — when the sun is below the horizon at both ends, coolest and shortest use the **same path** (uniform full shade).
 
-**Default coverage:** [Phoenix metro (wide)](docs/arizona.md) — `az-phoenix`. Smaller downtown graph: `az-phoenix-core`.
+**Default coverage:** [Phoenix metro (wide)](docs/arizona.md) — `az-phoenix`. Smaller downtown graph: `az-phoenix-core`. Rural Arizona can be prepared on demand with `az-tile-*` grid AOIs.
 
 ---
 
@@ -39,7 +39,7 @@ UmbraStride builds walkable street networks from [OpenStreetMap](https://www.ope
 
 ```mermaid
 flowchart LR
-  A[Origin + destination + datetime] --> B[Pick Arizona metro AOI]
+  A[Origin + destination + datetime] --> B[Pick Arizona metro or tile AOI]
   B --> C{Sun below horizon?}
   C -->|yes| D[Uniform full shade S=1]
   C -->|no| E[Load shade from SQLite]
@@ -214,7 +214,7 @@ Invoke-RestMethod -Method Post `
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Common problems |
 | [docs/glossary.md](docs/glossary.md) | Terms (AOI, alpha, …) |
 | [docs/configuration.md](docs/configuration.md) | All `.env` variables |
-| [docs/arizona.md](docs/arizona.md) | Metro presets |
+| [docs/arizona.md](docs/arizona.md) | Metro presets and statewide tiles |
 | [docs/shade-cache.md](docs/shade-cache.md) | Shade storage |
 | [docs/api.md](docs/api.md) | HTTP API reference |
 | [docs/architecture.md](docs/architecture.md) | System design |

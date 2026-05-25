@@ -72,6 +72,25 @@ def iter_tile_bboxes(region: dict[str, Any]) -> list[tuple[str, list[float]]]:
     return tiles
 
 
+def tile_records(region: dict[str, Any]) -> list[dict[str, Any]]:
+    """Generated tile AOI records with the same public shape as metro presets."""
+    records: list[dict[str, Any]] = []
+    for tid, bbox in iter_tile_bboxes(region):
+        west, south, east, north = bbox
+        records.append(
+            {
+                "aoi_id": tid,
+                "name": f"Arizona tile {west:.2f}, {south:.2f}",
+                "bbox": bbox,
+                "description": (
+                    f"On-demand Arizona grid tile covering "
+                    f"{west:.2f},{south:.2f} to {east:.2f},{north:.2f}"
+                ),
+            }
+        )
+    return records
+
+
 def estimate_tile_count(region: dict[str, Any]) -> int:
     return len(iter_tile_bboxes(region))
 
@@ -100,6 +119,27 @@ def presets_containing_both(
     return [aid for aid, _ in matches]
 
 
+def tiles_containing_both(
+    lng1: float, lat1: float, lng2: float, lat2: float, region_id: str = "arizona"
+) -> list[str]:
+    """Tile AOI ids whose bbox contains both points."""
+    region = load_region(region_id)
+    matches: list[str] = []
+    for tid, bbox in iter_tile_bboxes(region):
+        if point_in_bbox(lng1, lat1, bbox) and point_in_bbox(lng2, lat2, bbox):
+            matches.append(tid)
+    return matches
+
+
+def routable_aois_containing_both(
+    lng1: float, lat1: float, lng2: float, lat2: float, region_id: str = "arizona"
+) -> list[str]:
+    """Metro candidates first, then same-tile candidates."""
+    presets = presets_containing_both(lng1, lat1, lng2, lat2, region_id)
+    tiles = tiles_containing_both(lng1, lat1, lng2, lat2, region_id)
+    return presets + [tid for tid in tiles if tid not in presets]
+
+
 def resolve_aoi_for_route(
     origin_lng: float,
     origin_lat: float,
@@ -109,8 +149,8 @@ def resolve_aoi_for_route(
     preferred_aoi: str | None = None,
     region_id: str = "arizona",
 ) -> str:
-    """Pick widest metro AOI that covers both endpoints; prefer preferred_aoi if valid."""
-    candidates = presets_containing_both(
+    """Pick metro first, then same-tile AOI; prefer preferred_aoi if valid."""
+    candidates = routable_aois_containing_both(
         origin_lng, origin_lat, dest_lng, dest_lat, region_id
     )
     if preferred_aoi and preferred_aoi in candidates:

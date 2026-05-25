@@ -29,6 +29,7 @@ export type ArizonaRegion = {
   default_center: [number, number];
   default_zoom: number;
   presets: ArizonaPreset[];
+  tiles?: ArizonaPreset[];
   tile_count?: number;
   bootstrapped_aois?: string[];
 };

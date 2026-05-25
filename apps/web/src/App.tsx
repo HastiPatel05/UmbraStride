@@ -10,6 +10,12 @@ const PHOENIX_ZOOM = 16;
 const SHADE_AUTO_SYNC_MS = 10 * 60 * 1000;
 const ROUTE_AUTO_REFRESH_MS = 450;
 
+function bootstrapCommandForAoi(aoiId: string): string {
+  return aoiId.startsWith("az-tile-")
+    ? `python scripts/bootstrap_arizona.py --tile ${aoiId}`
+    : `python scripts/bootstrap_arizona.py --preset ${aoiId}`;
+}
+
 function toLocalDatetimeValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -70,7 +76,9 @@ export default function App() {
   );
 
   const activePreset = useMemo(
-    () => region?.presets.find((p) => p.aoi_id === aoiId) ?? null,
+    () =>
+      [...(region?.presets ?? []), ...(region?.tiles ?? [])].find((p) => p.aoi_id === aoiId) ??
+      null,
     [region, aoiId]
   );
 
@@ -140,7 +148,7 @@ export default function App() {
         if (!opts?.silent) {
           setError(
             `No street network for this area (${activePresetName ?? aoiId}). ` +
-              `Run: python scripts/bootstrap_arizona.py --preset ${aoiId}`
+              `Run: ${bootstrapCommandForAoi(aoiId)}`
           );
         }
         return;

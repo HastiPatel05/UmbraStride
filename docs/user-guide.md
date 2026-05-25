@@ -22,12 +22,12 @@ The map can also show **3D buildings** and, if configured, **moving shadows** fo
 Someone (or you) must have:
 
 1. **Installed** UmbraStride on the computer that runs the servers.
-2. **Downloaded street data** for Arizona metros you care about (“bootstrap”).
+2. **Downloaded street data** for Arizona metros or grid tiles you care about (“bootstrap”).
 3. **Created shade data** for those areas (“seed”)—demo data is enough to try routing.
 
 If step 2 or 3 was skipped, the app will show an error like *“No graph for this area”* with a command to run. See [Setup guide — Bootstrap data](setup.md#4-bootstrap-arizona-data).
 
-**Default area:** The app is tuned for **Phoenix metro (wide)** — roughly Phoenix, Tempe, and Scottsdale. You can walk other Arizona metros once their data is prepared (Tucson, Flagstaff, etc.).
+**Default area:** The app is tuned for **Phoenix metro (wide)** — roughly Phoenix, Tempe, and Scottsdale. You can walk other Arizona metros or same-tile rural Arizona areas once their data is prepared.
 
 ---
 
@@ -53,7 +53,7 @@ If step 2 or 3 was skipped, the app will show an error like *“No graph for thi
 - **Click on the map** where you want to go.
 - A **red dot** appears.
 
-**Tip:** Both points should be **inside the blue metro outline** on the map. If they are outside Arizona or outside a prepared metro, routing may fail.
+**Tip:** Both points should be inside the same prepared metro outline or the same prepared Arizona tile. If they are outside Arizona or span multiple unprepared areas, routing may fail.
 
 ### 3. Check the active area
 
@@ -165,7 +165,7 @@ The project is built for Arizona presets. Other regions would need new configura
 
 ### How far apart can origin and destination be?
 
-They must lie in the **same prepared metro graph** and be **connected by walkable streets**. Very long trips may be slow on large graphs (`az-phoenix` is much bigger than downtown-only).
+They must lie in the **same prepared metro or Arizona tile graph** and be **connected by walkable streets**. Multi-tile long-distance trips are not one route yet.
 
 ---
 
