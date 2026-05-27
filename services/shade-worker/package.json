@@ -11,8 +11,9 @@
   "dependencies": {
     "@umbrastride/shade-engine": "*",
     "@umbrastride/shared-types": "*",
+    "cors": "^2.8.5",
     "express": "^4.21.0",
-    "cors": "^2.8.5"
+    "suncalc": "^1.9.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

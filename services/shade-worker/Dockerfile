@@ -1,23 +1,23 @@
-FROM node:20-slim
+# UmbraStride shade-worker — Express + building-aware shade profiling
+FROM node:22-bookworm-slim
 
 WORKDIR /app
 
-# Copy root package.json and workspace package.json files
-COPY package.json package-lock.json /app/
-COPY packages/shade-engine/package.json /app/packages/shade-engine/
-COPY packages/shared-types/package.json /app/packages/shared-types/
-COPY services/shade-worker/package.json /app/services/shade-worker/
+COPY package.json package-lock.json ./
+COPY packages/shared-types/package.json packages/shared-types/
+COPY packages/shade-engine/package.json packages/shade-engine/
+COPY services/shade-worker/package.json services/shade-worker/
 
-# Install Node dependencies
-RUN npm ci
+RUN npm ci --workspace=@umbrastride/shade-worker --include-workspace-root
 
-# Copy source code
-COPY packages/shade-engine /app/packages/shade-engine
-COPY packages/shared-types /app/packages/shared-types
-COPY services/shade-worker /app/services/shade-worker
+COPY packages/shared-types packages/shared-types
+COPY packages/shade-engine packages/shade-engine
+COPY services/shade-worker services/shade-worker
 
-# Build TypeScript
-RUN npm run build --workspaces --if-present
+RUN npm run build -w @umbrastride/shade-worker
+
+ENV SHADE_WORKER_PORT=3001
+ENV NODE_ENV=production
 
 EXPOSE 3001
 

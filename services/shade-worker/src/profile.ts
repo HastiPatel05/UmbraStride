@@ -1,15 +1,33 @@
 import type { LngLat, ShadeProfilePoint } from "@umbrastride/shared-types";
+import { buildingAwareShadeProfile } from "./building-shade.js";
+import { syntheticShadeProfile } from "./synthetic.js";
+
+export type ProfileMode = "synthetic" | "building-aware";
+
+export function resolveProfileMode(): ProfileMode {
+  const mode = process.env.SHADE_PROFILE_MODE?.trim().toLowerCase();
+  if (mode === "building-aware" || mode === "buildings" || mode === "osm") {
+    return "building-aware";
+  }
+  return "synthetic";
+}
 
 /**
- * Mock sun/shade profile (deterministic). Replace with Playwright+ShadeMap when SHADEMAP_API_KEY is set.
+ * Profile shade for a batch of points at a datetime.
  */
+export async function profileShade(
+  points: LngLat[],
+  datetime: string
+): Promise<{ results: ShadeProfilePoint[]; mode: ProfileMode }> {
+  const mode = resolveProfileMode();
+  if (mode === "building-aware") {
+    const results = await buildingAwareShadeProfile(points, datetime);
+    return { results, mode };
+  }
+  return { results: syntheticShadeProfile(points, datetime), mode: "synthetic" };
+}
+
+/** @deprecated use profileShade */
 export function mockShadeProfile(points: LngLat[], datetime: string): ShadeProfilePoint[] {
-  const hour = new Date(datetime).getUTCHours();
-  const sunAz = ((hour - 12) * 15 * Math.PI) / 180;
-  return points.map((p) => {
-    const latFactor = Math.sin(p.lat * 120);
-    const lngFactor = Math.cos(p.lng * 80 + sunAz);
-    const shadeScore = 0.5 + 0.35 * latFactor + 0.25 * lngFactor;
-    return { lng: p.lng, lat: p.lat, inShade: shadeScore > 0.55 };
-  });
+  return syntheticShadeProfile(points, datetime);
 }

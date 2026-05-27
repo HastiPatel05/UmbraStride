@@ -14,7 +14,9 @@
     "lint": "npm run lint --workspaces --if-present",
     "dev:web": "npm run dev -w @umbrastride/web",
     "dev:api": "cd services/api && uvicorn umbrastride_api.main:app --reload --host 0.0.0.0 --port 8000",
-    "dev:worker": "npm run dev -w @umbrastride/shade-worker"
+    "dev:worker": "npm run dev -w @umbrastride/shade-worker",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up"
   },
   "engines": {
     "node": ">=20"

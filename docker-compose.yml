@@ -1,4 +1,14 @@
 services:
+  shade-worker:
+    build:
+      context: .
+      dockerfile: services/shade-worker/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - SHADE_PROFILE_MODE=${SHADE_PROFILE_MODE:-synthetic}
+      - SHADE_WORKER_CONCURRENCY=${SHADE_WORKER_CONCURRENCY:-2}
+
   api:
     build:
       context: .
@@ -8,26 +18,22 @@ services:
     environment:
       - DATA_DIR=/data
       - SHADE_WORKER_URL=http://shade-worker:3001
+      - DEFAULT_AOI_ID=${DEFAULT_AOI_ID:-az-phoenix}
+      - ROUTING_WARM_ON_STARTUP=${ROUTING_WARM_ON_STARTUP:-0}
+      - ROUTING_DISK_CACHE=1
     volumes:
       - ./data:/data
     depends_on:
       - shade-worker
 
-  shade-worker:
-    build:
-      context: .
-      dockerfile: services/shade-worker/Dockerfile
-    ports:
-      - "3001:3001"
-    environment:
-      - SHADEMAP_API_KEY=${SHADEMAP_API_KEY}
-      - MAPBOX_ACCESS_TOKEN=${MAPBOX_ACCESS_TOKEN}
-
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        - VITE_API_URL=/api
+        - VITE_DEFAULT_AOI=${DEFAULT_AOI_ID:-az-phoenix}
     ports:
-      - "5173:80"
+      - "8080:80"
     depends_on:
       - api

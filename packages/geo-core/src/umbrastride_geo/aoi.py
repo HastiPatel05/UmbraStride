@@ -9,13 +9,27 @@ def resolve_data_dir() -> Path:
     raw = os.environ.get("DATA_DIR", "./data")
     path = Path(raw).expanduser().resolve()
     path.mkdir(parents=True, exist_ok=True)
-    for sub in ("raw", "graphs", "shade-cache", "overrides"):
+    for sub in ("raw", "graphs", "shade-cache", "overrides", "routing-cache"):
         (path / sub).mkdir(parents=True, exist_ok=True)
     return path
 
 
 def aoi_graph_path(data_dir: Path, aoi_id: str) -> Path:
     return data_dir / "graphs" / f"{aoi_id}.graphml"
+
+
+def aoi_graph_pickle_path(data_dir: Path, aoi_id: str) -> Path:
+    return data_dir / "graphs" / f"{aoi_id}.graph.pkl"
+
+
+def aoi_edge_index_path(data_dir: Path, aoi_id: str) -> Path:
+    return data_dir / "graphs" / f"{aoi_id}.edge-index.json"
+
+
+def routing_cache_dir(data_dir: Path, aoi_id: str) -> Path:
+    path = data_dir / "routing-cache" / aoi_id
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def aoi_meta_path(data_dir: Path, aoi_id: str) -> Path:

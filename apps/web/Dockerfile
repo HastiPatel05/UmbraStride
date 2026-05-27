@@ -1,31 +1,29 @@
-# Build stage
-FROM node:20-slim AS builder
+# UmbraStride web — Vite build + nginx
+FROM node:22-bookworm-slim AS build
 
 WORKDIR /app
 
-# Copy package descriptors
-COPY package.json package-lock.json /app/
-COPY packages/shade-engine/package.json /app/packages/shade-engine/
-COPY packages/shared-types/package.json /app/packages/shared-types/
-COPY apps/web/package.json /app/apps/web/
+COPY package.json package-lock.json ./
+COPY apps/web/package.json apps/web/
+COPY packages/shared-types/package.json packages/shared-types/
+COPY packages/shade-engine/package.json packages/shade-engine/
 
-# Install Node dependencies
-RUN npm ci
+RUN npm ci --workspace=@umbrastride/web --include-workspace-root
 
-# Copy source files
-COPY packages/shade-engine /app/packages/shade-engine
-COPY packages/shared-types /app/packages/shared-types
-COPY apps/web /app/apps/web
+COPY apps/web apps/web
+COPY packages/shared-types packages/shared-types
+COPY packages/shade-engine packages/shade-engine
 
-# Build the Web client and local dependency packages
-RUN npm run build --workspaces --if-present
+ARG VITE_API_URL=/api
+ARG VITE_DEFAULT_AOI=az-phoenix
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_DEFAULT_AOI=$VITE_DEFAULT_AOI
 
-# Production serving stage
+RUN npm run build -w @umbrastride/web
+
 FROM nginx:alpine
 
-# Copy built files to nginx
-COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
+COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 
 EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
