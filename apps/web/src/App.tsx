@@ -273,6 +273,9 @@ export default function App() {
 
   const onPickPoint = useCallback(
     (kind: "origin" | "destination", lng: number, lat: number) => {
+      setRoutes([]);
+      setShadeCacheNote(null);
+      setError(null);
       if (kind === "origin") {
         setOrigin([lng, lat]);
         setOriginSearch(formatCoordinateLabel(lng, lat));
@@ -294,6 +297,9 @@ export default function App() {
       return;
     }
 
+    setRoutes([]);
+    setShadeCacheNote(null);
+    setError(null);
     setPickMode(kind);
     setMapCenter([lng, lat]);
     setMapZoom((z) => Math.max(z, 16));

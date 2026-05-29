@@ -25,6 +25,29 @@ const ROUTE_LINE_OFFSET: Record<string, number> = {
   coolest: 5,
 };
 
+function sameCoord(a: [number, number], b: [number, number]): boolean {
+  return Math.abs(a[0] - b[0]) < 1e-9 && Math.abs(a[1] - b[1]) < 1e-9;
+}
+
+function routeGeometryWithEndpoints(
+  geometry: GeoJSON.LineString,
+  origin: [number, number] | null,
+  destination: [number, number] | null
+): GeoJSON.LineString {
+  const coordinates = geometry.coordinates.slice() as [number, number][];
+  if (coordinates.length === 0) return geometry;
+
+  if (origin && !sameCoord(coordinates[0], origin)) {
+    coordinates.unshift(origin);
+  }
+  const last = coordinates[coordinates.length - 1];
+  if (destination && last && !sameCoord(last, destination)) {
+    coordinates.push(destination);
+  }
+
+  return { ...geometry, coordinates };
+}
+
 type Props = {
   routes: RouteResult[];
   origin: [number, number] | null;
@@ -44,8 +67,6 @@ export default function MapView({
   routes,
   origin,
   destination,
-  originSnapped,
-  destinationSnapped,
   onPickPoint,
   pickMode,
   datetime,
@@ -275,9 +296,10 @@ export default function MapView({
       for (const label of ROUTE_DRAW_ORDER) {
         const r = byLabel.get(label);
         if (!r?.geometry) continue;
+        const geometry = routeGeometryWithEndpoints(r.geometry, origin, destination);
         const fc: GeoJSON.FeatureCollection = {
           type: "FeatureCollection",
-          features: [{ type: "Feature", properties: {}, geometry: r.geometry }],
+          features: [{ type: "Feature", properties: {}, geometry }],
         };
         setRouteLine(
           label,
@@ -303,20 +325,6 @@ export default function MapView({
           geometry: { type: "Point", coordinates: destination },
         });
       }
-      if (originSnapped) {
-        markers.push({
-          type: "Feature",
-          properties: { role: "origin-snap" },
-          geometry: { type: "Point", coordinates: [originSnapped.lng, originSnapped.lat] },
-        });
-      }
-      if (destinationSnapped) {
-        markers.push({
-          type: "Feature",
-          properties: { role: "dest-snap" },
-          geometry: { type: "Point", coordinates: [destinationSnapped.lng, destinationSnapped.lat] },
-        });
-      }
       const markerFc: GeoJSON.FeatureCollection = {
         type: "FeatureCollection",
         features: markers,
@@ -335,17 +343,13 @@ export default function MapView({
               "match",
               ["get", "role"],
               "origin",
-              "#22c55e",
+              "#166534",
               "dest",
-              "#ef4444",
-              "origin-snap",
-              "#bbf7d0",
-              "dest-snap",
-              "#fecaca",
-              "#fff",
+              "#991b1b",
+              "#111827",
             ],
             "circle-stroke-width": 2,
-            "circle-stroke-color": "#0f1419",
+            "circle-stroke-color": "#f8fafc",
           },
         });
       }
@@ -380,7 +384,7 @@ export default function MapView({
 
     if (map.isStyleLoaded()) applyLayers();
     else map.once("load", applyLayers);
-  }, [routes, origin, destination, originSnapped, destinationSnapped]);
+  }, [routes, origin, destination]);
 
   return (
     <div className="map-wrap" style={{ height: "100%" }}>
@@ -388,10 +392,10 @@ export default function MapView({
       <ShadeOverlay map={mapInstance} datetime={datetime} />
       <div className="map-overlay map-hud" aria-hidden="true">
         <span className={pickMode === "origin" ? "pick-mode-active" : "pick-hint"}>
-          ● Green dot = origin
+          Dark green dot = origin
         </span>
         <span className={pickMode === "destination" ? "pick-mode-active" : "pick-hint"}>
-          ● Red dot = destination
+          Dark red dot = destination
         </span>
         {routes.length > 0 && (
           <span className="pick-hint route-legend">
