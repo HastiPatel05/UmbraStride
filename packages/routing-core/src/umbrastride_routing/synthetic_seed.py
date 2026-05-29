@@ -15,6 +15,16 @@ from umbrastride_routing.shade_store import ShadeStore, floor_ts_bucket
 
 _seed_lock = threading.Lock()
 _seed_in_progress: set[str] = set()
+_seed_locks: dict[str, threading.Lock] = {}
+
+
+def _bucket_lock(key: str) -> threading.Lock:
+    with _seed_lock:
+        lock = _seed_locks.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _seed_locks[key] = lock
+        return lock
 
 
 def synthetic_shade_fraction(
@@ -126,9 +136,22 @@ def ensure_synthetic_shade_bucket(
             "edge_rows": 0,
         }
 
-    _tb, rows = build_synthetic_rows_for_bucket(aoi_id, dt)
-    store = ShadeStore(aoi_id)
-    store.bulk_set(rows)
+    key = f"{aoi_id}:{tb}"
+    with _bucket_lock(key):
+        coverage = bucket_coverage_fraction(aoi_id, tb)
+        if not force and coverage >= min_coverage:
+            return {
+                "aoi_id": aoi_id,
+                "ts_bucket": tb,
+                "seeded": False,
+                "coverage": round(coverage, 3),
+                "edge_rows": 0,
+            }
+
+        _tb, rows = build_synthetic_rows_for_bucket(aoi_id, dt)
+        store = ShadeStore(aoi_id)
+        store.bulk_set(rows)
+
     clear_caches()
 
     return {

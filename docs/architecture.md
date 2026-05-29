@@ -54,6 +54,8 @@ flowchart LR
 
 Startup (when `ROUTING_WARM_ON_STARTUP=1`): same load/build path for `DEFAULT_AOI_ID` before first HTTP request.
 
+When automatic local shade is enabled, the route path also ensures the requested 15-minute shade bucket exists before loading shade. Shade-cache SQLite files use WAL mode and a busy timeout, and synthetic shade generation is serialized per AOI/time bucket so overlapping `/route` and `/shade/sync` requests do not try to seed the same bucket at once.
+
 ---
 
 ## Monorepo packages
