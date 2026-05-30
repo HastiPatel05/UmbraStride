@@ -40,6 +40,26 @@ function formatCoordinateLabel(lng: number, lat: number): string {
   return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 }
 
+function routeGeometryKey(route: RouteResult): string | null {
+  const coords = route.geometry?.coordinates as [number, number][] | undefined;
+  if (!coords?.length) return null;
+  return coords.map(([lng, lat]) => `${lng.toFixed(6)},${lat.toFixed(6)}`).join("|");
+}
+
+function collapseIdenticalRoutes(routes: RouteResult[]): RouteResult[] {
+  if (routes.length < 2) return routes;
+
+  const keys = routes.map(routeGeometryKey);
+  const firstKey = keys[0];
+  if (!firstKey || keys.some((key) => key !== firstKey)) return routes;
+
+  return [
+    routes.find((route) => route.label === "custom") ??
+      routes.find((route) => route.label === "coolest") ??
+      routes[0],
+  ];
+}
+
 type LocationSearchProps = {
   label: string;
   query: string;
@@ -212,6 +232,7 @@ export default function App() {
   const [shadeCacheNote, setShadeCacheNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [routeRefreshToken, setRouteRefreshToken] = useState(0);
   const routeRefreshTimerRef = useRef<number | null>(null);
   const hasRoutesRef = useRef(false);
   hasRoutesRef.current = routes.length > 0;
@@ -273,6 +294,8 @@ export default function App() {
 
   const onPickPoint = useCallback(
     (kind: "origin" | "destination", lng: number, lat: number) => {
+      const shouldRefreshRoutes =
+        hasRoutesRef.current && (kind === "origin" ? Boolean(destination) : Boolean(origin));
       setRoutes([]);
       setShadeCacheNote(null);
       setError(null);
@@ -285,8 +308,9 @@ export default function App() {
         setDestinationSearch(formatCoordinateLabel(lng, lat));
         setDestinationSnapped(null);
       }
+      if (shouldRefreshRoutes) setRouteRefreshToken((token) => token + 1);
     },
-    []
+    [destination, origin]
   );
 
   const selectSearchPlace = useCallback((kind: "origin" | "destination", place: PlaceSearchResult) => {
@@ -297,6 +321,8 @@ export default function App() {
       return;
     }
 
+    const shouldRefreshRoutes =
+      hasRoutesRef.current && (kind === "origin" ? Boolean(destination) : Boolean(origin));
     setRoutes([]);
     setShadeCacheNote(null);
     setError(null);
@@ -310,7 +336,8 @@ export default function App() {
       setDestination([lng, lat]);
       setDestinationSnapped(null);
     }
-  }, []);
+    if (shouldRefreshRoutes) setRouteRefreshToken((token) => token + 1);
+  }, [destination, origin]);
 
   const findRoutes = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -356,7 +383,7 @@ export default function App() {
           datetime: datetimeIso,
           alpha,
         });
-        setRoutes(result.routes);
+        setRoutes(collapseIdenticalRoutes(result.routes));
         setOriginSnapped(result.origin_snapped ?? null);
         setDestinationSnapped(result.destination_snapped ?? null);
         if (result.sun_below_horizon) {
@@ -435,6 +462,17 @@ export default function App() {
       if (routeRefreshTimerRef.current) window.clearTimeout(routeRefreshTimerRef.current);
     };
   }, [alpha, datetimeIso, origin, destination, findRoutes]);
+
+  useEffect(() => {
+    if (routeRefreshToken === 0 || !origin || !destination) return;
+    if (routeRefreshTimerRef.current) window.clearTimeout(routeRefreshTimerRef.current);
+    routeRefreshTimerRef.current = window.setTimeout(() => {
+      void findRoutes({ silent: true });
+    }, ROUTE_AUTO_REFRESH_MS);
+    return () => {
+      if (routeRefreshTimerRef.current) window.clearTimeout(routeRefreshTimerRef.current);
+    };
+  }, [routeRefreshToken, origin, destination, findRoutes]);
 
   return (
     <div className="app">
