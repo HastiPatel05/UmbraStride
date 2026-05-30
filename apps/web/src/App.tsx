@@ -323,7 +323,7 @@ export default function App() {
         if (!opts?.silent) {
           setError(
             "Cannot reach the API at http://127.0.0.1:8000. Start it in another terminal: " +
-              "source .venv/bin/activate && uvicorn umbrastride_api.main:app --reload --port 8000"
+              "npm run dev:api"
           );
         }
         return;
@@ -449,7 +449,7 @@ export default function App() {
         {regionLoadFailed && !regionFetching && (
           <p className="error">
             API not reachable — start:{" "}
-            <code>uvicorn umbrastride_api.main:app --reload --port 8000</code>
+            <code>npm run dev:api</code>
             {regionLoadError instanceof Error ? ` (${regionLoadError.message})` : ""}
             <button
               type="button"

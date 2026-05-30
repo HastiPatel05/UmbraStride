@@ -1,5 +1,5 @@
 import type { LngLat, ShadeProfilePoint } from "@umbrastride/shared-types";
-import { isSunBelowHorizon, NIGHT_UNIFORM_SHADE } from "./sun.js";
+import { getSunPosition, NIGHT_UNIFORM_SHADE } from "./sun.js";
 
 /**
  * Synthetic shade aligned with scripts/seed_demo_cache.py (_synthetic_shade).
@@ -8,17 +8,20 @@ import { isSunBelowHorizon, NIGHT_UNIFORM_SHADE } from "./sun.js";
 export function syntheticShadeFraction(
   lng: number,
   lat: number,
-  hour: number,
   bearingDeg: number | null,
   datetime: string
 ): number {
-  if (isSunBelowHorizon(datetime, lat, lng)) {
+  const sun = getSunPosition(datetime, lat, lng);
+  if (sun.altitudeDeg <= 0) {
     return NIGHT_UNIFORM_SHADE;
   }
 
-  const sunAz = 180.0 + (hour - 12) * 15.0;
-  const sunRad = (sunAz * Math.PI) / 180;
-  let base = 0.28 + 0.1 * Math.cos(((hour - 12) * 20 * Math.PI) / 180);
+  const date = new Date(datetime);
+  const utcHour =
+    date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
+  const sunRad = (sun.azimuthDeg * Math.PI) / 180;
+  const altitudeFactor = 1 - Math.min(Math.max(sun.altitudeDeg, 0), 75) / 75;
+  const base = 0.18 + 0.22 * altitudeFactor;
 
   let streetFactor: number;
   if (bearingDeg !== null) {
@@ -29,8 +32,8 @@ export function syntheticShadeFraction(
     streetFactor = 0.18 * Math.abs(Math.sin(lng * 1000 + lat * 1000));
   }
 
-  const corridor = 0.22 * Math.sin((lng + 112.08) * 9500 + hour * 0.7);
-  const crossStreet = 0.18 * Math.cos((lat - 33.45) * 11000 - hour * 0.4);
+  const corridor = 0.2 * Math.sin((lng + 112.08) * 9500 + sunRad * 1.7 + utcHour * 0.03);
+  const crossStreet = 0.16 * Math.cos((lat - 33.45) * 11000 - sunRad * 1.3);
 
   return Math.max(0.04, Math.min(0.96, base + streetFactor + corridor + crossStreet));
 }
@@ -39,9 +42,8 @@ export function syntheticShadeProfile(
   points: LngLat[],
   datetime: string
 ): ShadeProfilePoint[] {
-  const hour = new Date(datetime).getUTCHours();
   return points.map((p) => {
-    const sf = syntheticShadeFraction(p.lng, p.lat, hour, null, datetime);
+    const sf = syntheticShadeFraction(p.lng, p.lat, null, datetime);
     return { lng: p.lng, lat: p.lat, inShade: sf > 0.5 };
   });
 }

@@ -44,7 +44,7 @@ def _hour_rows(args: tuple) -> list[tuple]:
         if lng is None:
             sf = 0.5
         else:
-            sf = synthetic_shade_fraction(lng, lat, hour, bearing, dt=dt)
+            sf = synthetic_shade_fraction(lng, lat, bearing, dt=dt)
         out.append((ek, tb, sf, 5))
     return out
 

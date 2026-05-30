@@ -1,6 +1,9 @@
 from datetime import datetime, timezone
 
-from umbrastride_routing.synthetic_seed import ensure_synthetic_shade_bucket
+from umbrastride_routing.synthetic_seed import (
+    ensure_synthetic_shade_bucket,
+    synthetic_shade_fraction,
+)
 
 from test_routing_graph import _synthetic_graph
 
@@ -17,3 +20,16 @@ def test_ensure_synthetic_shade_bucket_seeds_missing(tmp_path, monkeypatch):
     second = ensure_synthetic_shade_bucket("test", dt)
     assert second["seeded"] is False
     assert second["coverage"] >= 0.9
+
+
+def test_synthetic_shade_tracks_requested_time_within_hour():
+    lng = -112.07
+    lat = 33.45
+    bearing = 90.0
+    early = datetime(2026, 6, 21, 18, 0, tzinfo=timezone.utc)
+    later = datetime(2026, 6, 21, 18, 30, tzinfo=timezone.utc)
+
+    early_shade = synthetic_shade_fraction(lng, lat, bearing, dt=early)
+    later_shade = synthetic_shade_fraction(lng, lat, bearing, dt=later)
+
+    assert early_shade != later_shade

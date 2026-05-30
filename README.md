@@ -148,16 +148,22 @@ Use two terminals.
 **Terminal 1: API, macOS / Linux**
 
 ```sh
-source .venv/bin/activate
-uvicorn umbrastride_api.main:app --reload --host 127.0.0.1 --port 8000
+npm run dev:api
 ```
 
 **Terminal 1: API, Windows PowerShell**
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
-uvicorn umbrastride_api.main:app --reload --host 127.0.0.1 --port 8000
+npm run dev:api
 ```
+
+Wait until this responds before opening the web app:
+
+```sh
+curl http://127.0.0.1:8000/health
+```
+
+`npm run dev:api` uses `.venv` directly and sets `ROUTING_WARM_ON_STARTUP=0` by default for local development, so Vite does not time out while routing caches warm. Warm routing manually before a demo if needed.
 
 **Terminal 2: Web, macOS / Linux / Windows**
 
@@ -166,6 +172,8 @@ npm run dev:web
 ```
 
 Open **http://localhost:5173** — [User walkthrough](docs/user-guide.md)
+
+If Vite logs `http proxy error: /v1/regions/arizona` or `ECONNREFUSED 127.0.0.1:8000`, the API is not listening on port 8000. Start Terminal 1 with `npm run dev:api`, confirm `/health`, then refresh the browser.
 
 ### Optional: Warm Routing Before A Demo
 
@@ -251,6 +259,7 @@ See [docs/configuration.md](docs/configuration.md).
 | `python scripts/bootstrap_arizona.py --preset az-phoenix` | Download walk streets |
 | `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14` | Synthetic shade (day); night hours get uniform full shade |
 | `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5` | Optional night shade buckets |
+| `npm run dev:api` | API dev server :8000, using `.venv` |
 | `POST /v1/aoi/az-phoenix/routing/warm` | Preload routing cache |
 | `docker compose up` | API + worker + web — [docs/docker.md](docs/docker.md) |
 | `npm run dev:web` | Web dev server :5173 |

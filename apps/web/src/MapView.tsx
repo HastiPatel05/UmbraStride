@@ -19,35 +19,6 @@ const ROUTE_LINE_WIDTH: Record<string, number> = {
   coolest: 7,
 };
 
-const ROUTE_LINE_OFFSET: Record<string, number> = {
-  shortest: -5,
-  custom: 0,
-  coolest: 5,
-};
-
-function sameCoord(a: [number, number], b: [number, number]): boolean {
-  return Math.abs(a[0] - b[0]) < 1e-9 && Math.abs(a[1] - b[1]) < 1e-9;
-}
-
-function routeGeometryWithEndpoints(
-  geometry: GeoJSON.LineString,
-  origin: [number, number] | null,
-  destination: [number, number] | null
-): GeoJSON.LineString {
-  const coordinates = geometry.coordinates.slice() as [number, number][];
-  if (coordinates.length === 0) return geometry;
-
-  if (origin && !sameCoord(coordinates[0], origin)) {
-    coordinates.unshift(origin);
-  }
-  const last = coordinates[coordinates.length - 1];
-  if (destination && last && !sameCoord(last, destination)) {
-    coordinates.push(destination);
-  }
-
-  return { ...geometry, coordinates };
-}
-
 type Props = {
   routes: RouteResult[];
   origin: [number, number] | null;
@@ -241,8 +212,7 @@ export default function MapView({
         label: string,
         data: GeoJSON.FeatureCollection,
         color: string,
-        width: number,
-        lineOffset: number
+        width: number
       ) => {
         const sourceId = `route-${label}`;
         const layerId = `${sourceId}-line`;
@@ -251,7 +221,7 @@ export default function MapView({
           if (map.getLayer(layerId)) {
             map.setPaintProperty(layerId, "line-color", color);
             map.setPaintProperty(layerId, "line-width", width);
-            map.setPaintProperty(layerId, "line-offset", lineOffset);
+            map.setPaintProperty(layerId, "line-offset", 0);
           }
         } else {
           map.addSource(sourceId, { type: "geojson", data });
@@ -263,7 +233,7 @@ export default function MapView({
               "line-color": color,
               "line-width": width,
               "line-opacity": 1,
-              "line-offset": lineOffset,
+              "line-offset": 0,
             },
           });
         }
@@ -298,17 +268,15 @@ export default function MapView({
       for (const label of ROUTE_DRAW_ORDER) {
         const r = byLabel.get(label);
         if (!r?.geometry) continue;
-        const geometry = routeGeometryWithEndpoints(r.geometry, origin, destination);
         const fc: GeoJSON.FeatureCollection = {
           type: "FeatureCollection",
-          features: [{ type: "Feature", properties: {}, geometry }],
+          features: [{ type: "Feature", properties: {}, geometry: r.geometry }],
         };
         setRouteLine(
           label,
           fc,
           ROUTE_COLORS[label],
-          ROUTE_LINE_WIDTH[label],
-          ROUTE_LINE_OFFSET[label]
+          ROUTE_LINE_WIDTH[label]
         );
       }
 

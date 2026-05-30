@@ -9,7 +9,12 @@ from typing import Any
 
 from umbrastride_geo.edge_index import load_edge_index
 from umbrastride_geo.graph import edge_key, iter_edges
-from umbrastride_geo.sun import NIGHT_UNIFORM_SHADE, is_sun_below_horizon
+from umbrastride_geo.sun import (
+    NIGHT_UNIFORM_SHADE,
+    ensure_utc,
+    sun_altitude_deg,
+    sun_azimuth_deg,
+)
 from umbrastride_routing.cache import clear_caches, get_graph
 from umbrastride_routing.shade_store import ShadeStore, floor_ts_bucket
 
@@ -30,17 +35,20 @@ def _bucket_lock(key: str) -> threading.Lock:
 def synthetic_shade_fraction(
     lng: float,
     lat: float,
-    hour: int,
     bearing_deg: float | None,
     *,
     dt: datetime,
 ) -> float:
-    if is_sun_below_horizon(dt, lat, lng):
+    dt = ensure_utc(dt)
+    altitude = sun_altitude_deg(dt, lat, lng)
+    if altitude <= 0:
         return NIGHT_UNIFORM_SHADE
 
-    sun_az = 180.0 + (hour - 12) * 15.0
+    sun_az = sun_azimuth_deg(dt, lat, lng)
     sun_rad = math.radians(sun_az)
-    base = 0.28 + 0.10 * math.cos(math.radians((hour - 12) * 20))
+    utc_hour = dt.hour + dt.minute / 60.0 + dt.second / 3600.0
+    altitude_factor = 1.0 - min(max(altitude, 0.0), 75.0) / 75.0
+    base = 0.18 + 0.22 * altitude_factor
 
     if bearing_deg is not None:
         seg = math.radians(bearing_deg)
@@ -49,8 +57,8 @@ def synthetic_shade_fraction(
     else:
         street_factor = 0.18 * abs(math.sin(math.radians(lng * 1000 + lat * 1000)))
 
-    corridor = 0.22 * math.sin((lng + 112.08) * 9500 + hour * 0.7)
-    cross_street = 0.18 * math.cos((lat - 33.45) * 11000 - hour * 0.4)
+    corridor = 0.20 * math.sin((lng + 112.08) * 9500 + sun_rad * 1.7 + utc_hour * 0.03)
+    cross_street = 0.16 * math.cos((lat - 33.45) * 11000 - sun_rad * 1.3)
 
     return max(0.04, min(0.96, base + street_factor + corridor + cross_street))
 
@@ -89,7 +97,6 @@ def build_synthetic_rows_for_bucket(aoi_id: str, dt: datetime) -> tuple[str, lis
     """Build bulk_set rows for one time bucket."""
     dt = _bucket_dt(dt)
     tb = floor_ts_bucket(dt)
-    hour = dt.hour
     G = get_graph(aoi_id)
     rows: list[tuple[str, str, float, int]] = []
 
@@ -106,7 +113,7 @@ def build_synthetic_rows_for_bucket(aoi_id: str, dt: datetime) -> tuple[str, lis
                 bearing = (math.degrees(math.atan2(dx, dy)) + 360) % 360
             else:
                 bearing = None
-            sf = synthetic_shade_fraction(mid.x, mid.y, hour, bearing, dt=dt)
+            sf = synthetic_shade_fraction(mid.x, mid.y, bearing, dt=dt)
         rows.append((ek, tb, sf, 5))
 
     return tb, rows

@@ -26,8 +26,8 @@ Copy from [`.env.example`](../.env.example).
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `DATA_DIR` | `./data` | Where graphs (`data/graphs/`) and shade cache (`data/shade-cache/`) are stored. |
-| `API_HOST` | `0.0.0.0` | API bind address. |
-| `API_PORT` | `8000` | API port. |
+| `API_HOST` | `0.0.0.0` | API bind address. `npm run dev:api` defaults to `127.0.0.1` unless this is set. |
+| `API_PORT` | `8000` | API port used by `npm run dev:api`. Vite proxies to 8000 unless `VITE_API_URL` is set. |
 | `API_CORS_ORIGINS` | `http://localhost:5173,...` | Browser origins allowed to call the API. Add your LAN URL if testing from another device. |
 
 ### Shade worker
@@ -67,7 +67,7 @@ Set any to a positive integer to limit cores (e.g. `ROUTING_DIJKSTRA_WORKERS=4`)
 | `ROUTING_LOCAL_MARGIN_DEG` | `0.012` | Corridor crop margin around origin/destination before shortest-path. |
 | `ROUTING_CORRIDOR_SCALES` | `0.6,1.0,1.6,3.0` | Expand corridor until a path exists (multipliers on margin). |
 | `ROUTING_DISK_CACHE` | `1` | Persist built routing DiGraph under `data/routing-cache/`. |
-| `ROUTING_WARM_ON_STARTUP` | `1` | Preload `DEFAULT_AOI_ID` when API starts. |
+| `ROUTING_WARM_ON_STARTUP` | `1` | Preload `DEFAULT_AOI_ID` when API starts. `npm run dev:api` defaults this to `0` for faster local startup unless you set it explicitly. |
 | `ROUTING_WARM_HOURS` | empty | Comma hours (UTC) to warm on startup, e.g. `10,11,12,13,14`. |
 | `ROUTING_PATH_ENGINE` | `rustworkx` | `rustworkx` or `networkx` for shortest-path. |
 | `ROUTING_USE_ASTAR` | `1` | A* with geographic heuristic (disable if debugging). |

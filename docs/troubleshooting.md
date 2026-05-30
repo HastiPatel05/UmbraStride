@@ -29,25 +29,55 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ### `uvicorn` not found
 
-**Cause:** Virtual environment not activated or API package not installed.
+**Cause:** Virtual environment not activated, API package not installed, or the shell is not using `.venv`.
 
 **Fix:**
 
 ```bash
+npm run dev:api
+```
+
+`npm run dev:api` runs `.venv/bin/python -m uvicorn` on Linux/macOS, or `.venv\Scripts\python.exe -m uvicorn` on Windows.
+
+If `.venv` is missing or dependencies are not installed, run the setup steps again:
+
+```bash
 source .venv/bin/activate   # Linux/macOS
 pip install -e "services/api[dev]"
-uvicorn umbrastride_api.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 ### Web opens but API errors / “Failed to fetch”
 
-**Cause:** API not running or wrong port; CORS/proxy mismatch.
+**Cause:** API not running on port 8000, wrong port, or CORS/proxy mismatch.
 
 **Fix:**
 
 1. Confirm API: `curl http://127.0.0.1:8000/health` → `{"status":"ok"}`.
-2. Run `npm run dev:web` from repo root (Vite proxies `/api` → 8000).
-3. Check `API_CORS_ORIGINS` in `.env` includes your browser URL.
+2. If that fails with connection refused, start the API in another terminal: `npm run dev:api`.
+3. Run `npm run dev:web` from repo root (Vite proxies `/api` → 8000).
+4. Check `API_CORS_ORIGINS` in `.env` includes your browser URL.
+
+### Vite logs `http proxy error: /v1/regions/arizona`
+
+**Cause:** The web app asked Vite for `/api/v1/regions/arizona`, and Vite tried to proxy it to `http://127.0.0.1:8000`, but nothing accepted the connection.
+
+**Fix:**
+
+```bash
+# Terminal 1
+npm run dev:api
+
+# Terminal 2
+curl http://127.0.0.1:8000/health
+npm run dev:web
+```
+
+If you intentionally run the API on a different port, start the web app with a full API URL:
+
+```bash
+API_PORT=8001 npm run dev:api
+VITE_API_URL=http://127.0.0.1:8001 npm run dev:web
+```
 
 ---
 

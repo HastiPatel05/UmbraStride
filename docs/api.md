@@ -323,7 +323,22 @@ curl -s -X POST http://127.0.0.1:8000/v1/route \
 
 In development, Vite serves the web app on port **5173** and proxies `/api` → `http://127.0.0.1:8000`. The browser calls `/api/v1/route`, not port 8000 directly.
 
-Set `VITE_API_URL` if the API is hosted elsewhere.
+Start the API first:
+
+```bash
+npm run dev:api
+curl http://127.0.0.1:8000/health
+npm run dev:web
+```
+
+If the Vite terminal logs `http proxy error` or `ECONNREFUSED 127.0.0.1:8000`, the API is not listening on port 8000 yet.
+
+Set `VITE_API_URL` if the API is hosted elsewhere:
+
+```bash
+API_PORT=8001 npm run dev:api
+VITE_API_URL=http://127.0.0.1:8001 npm run dev:web
+```
 
 ---
 

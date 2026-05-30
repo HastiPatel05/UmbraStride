@@ -236,19 +236,14 @@ Use **two terminals** (three with shade worker).
 
 ```bash
 cd UmbraStride
-source .venv/bin/activate   # Linux/macOS
-uvicorn umbrastride_api.main:app --reload --host 127.0.0.1 --port 8000
+npm run dev:api
 ```
 
-**Windows:**
+This starts Uvicorn from the repo `.venv` on **http://127.0.0.1:8000**. For local development it defaults `ROUTING_WARM_ON_STARTUP=0`, so the API can answer `/health` immediately instead of blocking while routing caches warm.
 
-```powershell
-cd UmbraStride
-.\.venv\Scripts\Activate.ps1
-uvicorn umbrastride_api.main:app --reload --host 127.0.0.1 --port 8000
-```
+To change the port, use `API_PORT=8001 npm run dev:api` and start the web app with `VITE_API_URL=http://127.0.0.1:8001 npm run dev:web`.
 
-**On startup** (when `ROUTING_WARM_ON_STARTUP=1`): API preloads `DEFAULT_AOI_ID` graph and routing cache. First run after seed may take **minutes** while `data/routing-cache/` is populated.
+**On startup** (when `ROUTING_WARM_ON_STARTUP=1`): API preloads `DEFAULT_AOI_ID` graph and routing cache. First run after seed may take **minutes** while `data/routing-cache/` is populated. Keep it off for normal UI work and warm manually before demos.
 
 Test:
 
@@ -265,6 +260,8 @@ npm run dev:web
 ```
 
 Open **http://localhost:5173**
+
+If the Vite terminal prints `http proxy error: /v1/regions/arizona` with `ECONNREFUSED 127.0.0.1:8000`, Terminal 1 is not running or is on a different port. Start `npm run dev:api`, confirm `curl http://127.0.0.1:8000/health`, then refresh the page.
 
 ### Terminal 3 — Shade worker (optional)
 
@@ -359,7 +356,7 @@ Use this to confirm a working install:
 |---------|---------|
 | `npm run dev:web` | Web :5173 |
 | `npm run dev:worker` | Worker :3001 |
-| `npm run dev:api` | API (alternative to uvicorn) |
+| `npm run dev:api` | API :8000, using repo `.venv` |
 
 ---
 

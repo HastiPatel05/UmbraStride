@@ -75,7 +75,6 @@ export async function buildingAwareShadeProfile(
   datetime: string
 ): Promise<ShadeProfilePoint[]> {
   const date = new Date(datetime);
-  const hour = date.getUTCHours();
   const buildings = await getBuildings(points);
 
   return points.map((p) => {
@@ -87,7 +86,7 @@ export async function buildingAwareShadeProfile(
     if (altitude <= 0) {
       inShade = true;
     } else if (buildings.length === 0) {
-      const sf = syntheticShadeFraction(p.lng, p.lat, hour, null, datetime);
+      const sf = syntheticShadeFraction(p.lng, p.lat, null, datetime);
       inShade = sf > 0.5;
     } else {
       inShade = rayHitsBuilding(p.lng, p.lat, azimuth, altitude, buildings);
