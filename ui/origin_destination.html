@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Origin / Destination Inputs</title>
+  <link rel="stylesheet" href="origin_destination.css">
+</head>
+<body>
+  <main class="od-container" aria-label="Origin and destination inputs">
+    <label class="od-label">
+      Origin
+      <input id="origin-input" class="od-input" placeholder="Enter origin address" autocomplete="off" aria-autocomplete="list" aria-controls="origin-list" />
+      <ul id="origin-list" class="od-suggestions" role="listbox" hidden></ul>
+    </label>
+
+    <label class="od-label">
+      Destination
+      <input id="destination-input" class="od-input" placeholder="Enter destination address" autocomplete="off" aria-autocomplete="list" aria-controls="destination-list" />
+      <ul id="destination-list" class="od-suggestions" role="listbox" hidden></ul>
+    </label>
+
+    <button id="od-submit" class="od-button">Search</button>
+  </main>
+
+  <script type="module" src="origin_destination.js"></script>
+</body>
+</html>

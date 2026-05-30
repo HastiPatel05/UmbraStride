@@ -218,6 +218,8 @@ If both `datetime` and `hours` omitted, warms **current UTC** bucket only.
 
 Compute up to three routes: **shortest** (α=1), **coolest** (α=0), and **custom** (your α).
 
+When automatic local shade is enabled, this endpoint first ensures the requested 15-minute shade bucket exists for the resolved AOI. That write uses the shade-cache SQLite database, so concurrent shade sync/precompute work for the same AOI may briefly make the route wait.
+
 **Body:**
 
 ```json
@@ -296,7 +298,7 @@ Compute up to three routes: **shortest** (α=1), **coolest** (α=0), and **custo
 |------|----------------|
 | `400` | Invalid datetime; points outside requested AOI |
 | `404` | No graph; no path between points |
-| `500` | Unexpected server error |
+| `500` | Unexpected server error; if logs show `database is locked`, restart on the latest code and avoid concurrent shade precompute for the same AOI |
 
 ---
 

@@ -69,6 +69,100 @@ body,
   color: var(--text);
 }
 
+.location-searches {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.location-search {
+  position: relative;
+}
+
+.location-search-box {
+  position: relative;
+}
+
+.location-search input {
+  padding-right: 4.9rem;
+}
+
+.location-search input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(61, 155, 233, 0.18);
+}
+
+.location-search.origin input:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.16);
+}
+
+.location-search.destination input:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.16);
+}
+
+.location-search-status {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 0.68rem;
+  pointer-events: none;
+}
+
+.location-results {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.3rem);
+  z-index: 6;
+  list-style: none;
+  padding: 0.25rem;
+  margin: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #111821;
+  border: 1px solid #2a3548;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+}
+
+.location-results li {
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0.5rem 0.55rem;
+}
+
+.location-results li.active,
+.location-results li:hover {
+  background: #243149;
+}
+
+.location-results span,
+.location-results small {
+  display: block;
+}
+
+.location-results span {
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+
+.location-results small {
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.66rem;
+  text-transform: capitalize;
+}
+
+.location-search-note {
+  color: #fdba74;
+  font-size: 0.7rem;
+  margin: 0.25rem 0 0;
+}
+
 .datetime-control {
   display: grid;
   grid-template-columns: 1fr 64px;

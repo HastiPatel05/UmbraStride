@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import MapView from "./MapView";
-import { fetchArizonaRegion, fetchRoute, syncShadeCache, type RouteResult, type SnappedPoint } from "./api";
+import {
+  fetchArizonaRegion,
+  fetchRoute,
+  searchPlaces,
+  syncShadeCache,
+  type PlaceSearchResult,
+  type RouteResult,
+  type SnappedPoint,
+} from "./api";
 import { resolveAoiForRoute, resolvePresetForPoint } from "./resolveAoi";
 
 const DEFAULT_AOI = import.meta.env.VITE_DEFAULT_AOI || "az-phoenix";
@@ -28,6 +36,158 @@ function shiftLocalDatetimeValue(value: string, minutes: number): string {
   return toLocalDatetimeValue(d);
 }
 
+function formatCoordinateLabel(lng: number, lat: number): string {
+  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
+type LocationSearchProps = {
+  label: string;
+  query: string;
+  onQueryChange: (value: string) => void;
+  onSelect: (place: PlaceSearchResult) => void;
+  bbox?: number[];
+  placeholder: string;
+  tone: "origin" | "destination";
+};
+
+function LocationSearch({
+  label,
+  query,
+  onQueryChange,
+  onSelect,
+  bbox,
+  placeholder,
+  tone,
+}: LocationSearchProps) {
+  const [results, setResults] = useState<PlaceSearchResult[]>([]);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [status, setStatus] = useState<"idle" | "searching" | "error">("idle");
+  const selectedQueryRef = useRef<string | null>(null);
+  const inputId = `${tone}-search`;
+
+  useEffect(() => {
+    const text = query.trim();
+    const isCoordinateLabel = /^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/.test(text);
+    if (text.length < 3 || selectedQueryRef.current === text || isCoordinateLabel) {
+      setResults([]);
+      setOpen(false);
+      setActiveIndex(-1);
+      setStatus("idle");
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setStatus("searching");
+      searchPlaces(text, bbox, controller.signal)
+        .then((places) => {
+          setResults(places);
+          setOpen(places.length > 0);
+          setActiveIndex(places.length > 0 ? 0 : -1);
+          setStatus("idle");
+        })
+        .catch((e) => {
+          if (e instanceof DOMException && e.name === "AbortError") return;
+          if (e instanceof Error && e.name === "AbortError") return;
+          setResults([]);
+          setOpen(false);
+          setActiveIndex(-1);
+          setStatus("error");
+        });
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [bbox, query]);
+
+  const selectPlace = useCallback(
+    (place: PlaceSearchResult) => {
+      selectedQueryRef.current = place.display_name.trim();
+      onQueryChange(place.display_name);
+      setResults([]);
+      setOpen(false);
+      setActiveIndex(-1);
+      setStatus("idle");
+      onSelect(place);
+    },
+    [onQueryChange, onSelect]
+  );
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!open || results.length === 0) {
+      if (e.key === "Escape") setOpen(false);
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((idx) => Math.min(results.length - 1, idx + 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((idx) => Math.max(0, idx - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeIndex >= 0) selectPlace(results[activeIndex]);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div className={`location-search ${tone}`}>
+      <label htmlFor={inputId}>{label}</label>
+      <div className="location-search-box">
+        <input
+          id={inputId}
+          type="search"
+          value={query}
+          placeholder={placeholder}
+          autoComplete="off"
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={`${inputId}-results`}
+          aria-activedescendant={activeIndex >= 0 ? `${inputId}-option-${activeIndex}` : undefined}
+          onChange={(e) => {
+            selectedQueryRef.current = null;
+            onQueryChange(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(results.length > 0)}
+          onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+          onKeyDown={onKeyDown}
+        />
+        {status === "searching" && <span className="location-search-status">Searching</span>}
+      </div>
+      {open && results.length > 0 && (
+        <ul id={`${inputId}-results`} className="location-results" role="listbox">
+          {results.map((place, index) => (
+            <li
+              id={`${inputId}-option-${index}`}
+              key={`${place.place_id}-${place.lat}-${place.lon}`}
+              role="option"
+              aria-selected={index === activeIndex}
+              className={index === activeIndex ? "active" : ""}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                selectPlace(place);
+              }}
+            >
+              <span>{place.display_name}</span>
+              {(place.type || place.class) && (
+                <small>{[place.type, place.class].filter(Boolean).join(" / ")}</small>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {status === "error" && <p className="location-search-note">Search unavailable</p>}
+    </div>
+  );
+}
+
 export default function App() {
   const [aoiId, setAoiId] = useState(DEFAULT_AOI);
   const [activePresetName, setActivePresetName] = useState<string | null>(null);
@@ -41,6 +201,8 @@ export default function App() {
     PHOENIX_CENTER[0] + 0.004,
     PHOENIX_CENTER[1] + 0.003,
   ]);
+  const [originSearch, setOriginSearch] = useState("");
+  const [destinationSearch, setDestinationSearch] = useState("");
   const [pickMode, setPickMode] = useState<"origin" | "destination">("origin");
   const [datetime, setDatetime] = useState(toLocalDatetimeValue(new Date()));
   const [alpha, setAlpha] = useState(0.35);
@@ -111,21 +273,49 @@ export default function App() {
 
   const onPickPoint = useCallback(
     (kind: "origin" | "destination", lng: number, lat: number) => {
+      setRoutes([]);
+      setShadeCacheNote(null);
+      setError(null);
       if (kind === "origin") {
         setOrigin([lng, lat]);
+        setOriginSearch(formatCoordinateLabel(lng, lat));
         setOriginSnapped(null);
       } else {
         setDestination([lng, lat]);
+        setDestinationSearch(formatCoordinateLabel(lng, lat));
         setDestinationSnapped(null);
       }
     },
     []
   );
 
+  const selectSearchPlace = useCallback((kind: "origin" | "destination", place: PlaceSearchResult) => {
+    const lng = Number(place.lon);
+    const lat = Number(place.lat);
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
+      setError("Selected place has invalid coordinates");
+      return;
+    }
+
+    setRoutes([]);
+    setShadeCacheNote(null);
+    setError(null);
+    setPickMode(kind);
+    setMapCenter([lng, lat]);
+    setMapZoom((z) => Math.max(z, 16));
+    if (kind === "origin") {
+      setOrigin([lng, lat]);
+      setOriginSnapped(null);
+    } else {
+      setDestination([lng, lat]);
+      setDestinationSnapped(null);
+    }
+  }, []);
+
   const findRoutes = useCallback(
     async (opts?: { silent?: boolean }) => {
       if (!origin || !destination) {
-        if (!opts?.silent) setError("Set origin and destination on the map");
+        if (!opts?.silent) setError("Set origin and destination with search or the map");
         return;
       }
 
@@ -280,7 +470,30 @@ export default function App() {
         )}
 
         <div className="field">
-          <label>Click map to set</label>
+          <div className="location-searches">
+            <LocationSearch
+              label="Origin"
+              query={originSearch}
+              onQueryChange={setOriginSearch}
+              onSelect={(place) => selectSearchPlace("origin", place)}
+              bbox={region?.bbox}
+              placeholder="Search origin"
+              tone="origin"
+            />
+            <LocationSearch
+              label="Destination"
+              query={destinationSearch}
+              onQueryChange={setDestinationSearch}
+              onSelect={(place) => selectSearchPlace("destination", place)}
+              bbox={region?.bbox}
+              placeholder="Search destination"
+              tone="destination"
+            />
+          </div>
+        </div>
+
+        <div className="field">
+          <label>Or click map to set</label>
           <div className="pick-toggle">
             <button
               type="button"

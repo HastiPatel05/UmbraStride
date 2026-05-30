@@ -18,6 +18,8 @@ For each **street segment** and **time of day**, UmbraStride stores a number **0
 
 Data lives in **SQLite per AOI**. If missing, every street defaults to **50% shade** and all three routes look the same.
 
+SQLite is also the coordination point for automatic shade generation. Route requests can create the selected 15-minute bucket before routing; background shade sync and manual precompute write to the same `{aoi_id}.sqlite` file.
+
 ---
 
 ## Cache tiers (full stack)
@@ -66,6 +68,16 @@ If automatic shade is disabled or a bucket cannot be generated, the router can f
 ```bash
 python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date 2026-05-22
 ```
+
+### SQLite concurrency
+
+Shade cache writes are safe for normal local use, but SQLite allows only one writer at a time. UmbraStride configures shade-cache connections with:
+
+- `PRAGMA journal_mode = WAL`
+- `PRAGMA busy_timeout = 30000`
+- one in-process synthetic seed lock per AOI/time bucket
+
+This prevents most `database is locked` failures when `/v1/route` and `/v1/aoi/{aoi}/shade/sync` touch the same bucket. If you run an external script such as `precompute_shade.py` while routing in the web app, the API may wait for that writer to finish. For long precompute jobs, avoid routing the same AOI until the script completes.
 
 ---
 

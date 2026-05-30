@@ -232,6 +232,18 @@ Or set `ROUTING_PATH_ENGINE=networkx` in `.env` (slower).
 
 **Fix:** Enable `AUTO_SHADE_SEED=1`, seed that hour, or accept nearest-hour fallback (documented in [Shade cache](shade-cache.md)).
 
+### `500 Internal Server Error` with `sqlite3.OperationalError: database is locked`
+
+**Cause:** Two requests tried to write the same shade-cache SQLite file at the same time. This can happen when a route request auto-generates shade for a new 15-minute bucket while `/v1/aoi/{aoi}/shade/sync`, `precompute_shade.py`, or another route request is also writing `data/shade-cache/{aoi}.sqlite`.
+
+**Fix:**
+
+1. Pull the latest code. Shade-cache connections now use WAL mode plus a longer busy timeout, and synthetic shade seeding is serialized per AOI/time bucket.
+2. Restart the API so the new SQLite settings are applied.
+3. Retry the route. If the file is still locked, wait for the current shade sync/precompute job to finish before sending another route request.
+
+**Prevention:** Avoid running manual shade precompute against the same AOI while repeatedly clicking routes in the web app. For demos, pre-seed or warm the time buckets first, then start routing.
+
 ---
 
 ## Data and scripts

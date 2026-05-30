@@ -25,6 +25,29 @@ const ROUTE_LINE_OFFSET: Record<string, number> = {
   coolest: 5,
 };
 
+function sameCoord(a: [number, number], b: [number, number]): boolean {
+  return Math.abs(a[0] - b[0]) < 1e-9 && Math.abs(a[1] - b[1]) < 1e-9;
+}
+
+function routeGeometryWithEndpoints(
+  geometry: GeoJSON.LineString,
+  origin: [number, number] | null,
+  destination: [number, number] | null
+): GeoJSON.LineString {
+  const coordinates = geometry.coordinates.slice() as [number, number][];
+  if (coordinates.length === 0) return geometry;
+
+  if (origin && !sameCoord(coordinates[0], origin)) {
+    coordinates.unshift(origin);
+  }
+  const last = coordinates[coordinates.length - 1];
+  if (destination && last && !sameCoord(last, destination)) {
+    coordinates.push(destination);
+  }
+
+  return { ...geometry, coordinates };
+}
+
 type Props = {
   routes: RouteResult[];
   origin: [number, number] | null;
@@ -275,9 +298,10 @@ export default function MapView({
       for (const label of ROUTE_DRAW_ORDER) {
         const r = byLabel.get(label);
         if (!r?.geometry) continue;
+        const geometry = routeGeometryWithEndpoints(r.geometry, origin, destination);
         const fc: GeoJSON.FeatureCollection = {
           type: "FeatureCollection",
-          features: [{ type: "Feature", properties: {}, geometry: r.geometry }],
+          features: [{ type: "Feature", properties: {}, geometry }],
         };
         setRouteLine(
           label,

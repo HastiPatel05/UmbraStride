@@ -33,8 +33,14 @@ class ShadeStore:
         self.path = cache_dir / f"{aoi_id}.sqlite"
         self._init_db()
 
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.path, timeout=30.0)
+        conn.execute("PRAGMA busy_timeout = 30000")
+        return conn
+
     def _init_db(self) -> None:
-        with sqlite3.connect(self.path) as conn:
+        with self._connect() as conn:
+            conn.execute("PRAGMA journal_mode = WAL")
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS edge_shade (
@@ -50,7 +56,7 @@ class ShadeStore:
             conn.commit()
 
     def list_buckets(self) -> list[str]:
-        with sqlite3.connect(self.path) as conn:
+        with self._connect() as conn:
             rows = conn.execute(
                 "SELECT DISTINCT ts_bucket FROM edge_shade WHERE aoi_id = ? ORDER BY ts_bucket",
                 (self.aoi_id,),
@@ -80,7 +86,7 @@ class ShadeStore:
 
     def load_bucket(self, ts_bucket: str) -> dict[str, float]:
         """Load all shade fractions for a time bucket in one query."""
-        with sqlite3.connect(self.path) as conn:
+        with self._connect() as conn:
             rows = conn.execute(
                 """
                 SELECT edge_key, shade_fraction FROM edge_shade
@@ -92,7 +98,7 @@ class ShadeStore:
 
     def count_bucket_edges(self, ts_bucket: str) -> int:
         """Fast count of edges with shade for a bucket (no full dict load)."""
-        with sqlite3.connect(self.path) as conn:
+        with self._connect() as conn:
             row = conn.execute(
                 """
                 SELECT COUNT(DISTINCT edge_key) FROM edge_shade
@@ -113,7 +119,7 @@ class ShadeStore:
         import numpy as np
 
         arr = np.full(n_edges, default, dtype=np.float32)
-        with sqlite3.connect(self.path) as conn:
+        with self._connect() as conn:
             rows = conn.execute(
                 """
                 SELECT edge_key, shade_fraction FROM edge_shade
@@ -172,7 +178,7 @@ class ShadeStore:
     def set_fraction(
         self, edge_key: str, ts_bucket: str, shade_fraction: float, sample_count: int = 1
     ) -> None:
-        with sqlite3.connect(self.path) as conn:
+        with self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO edge_shade (aoi_id, edge_key, ts_bucket, shade_fraction, sample_count)
@@ -186,7 +192,7 @@ class ShadeStore:
             conn.commit()
 
     def bulk_set(self, rows: list[tuple[str, str, float, int]]) -> None:
-        with sqlite3.connect(self.path) as conn:
+        with self._connect() as conn:
             conn.executemany(
                 """
                 INSERT INTO edge_shade (aoi_id, edge_key, ts_bucket, shade_fraction, sample_count)
@@ -200,7 +206,7 @@ class ShadeStore:
             conn.commit()
 
     def coverage(self, ts_bucket: str | None = None) -> dict:
-        with sqlite3.connect(self.path) as conn:
+        with self._connect() as conn:
             if ts_bucket:
                 cached = conn.execute(
                     "SELECT COUNT(DISTINCT edge_key) FROM edge_shade WHERE aoi_id = ? AND ts_bucket = ?",

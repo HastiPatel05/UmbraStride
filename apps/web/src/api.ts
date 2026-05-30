@@ -4,6 +4,15 @@ export type LngLat = { lng: number; lat: number };
 
 export type SnappedPoint = LngLat & { distance_m: number };
 
+export type PlaceSearchResult = {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+  type?: string;
+  class?: string;
+};
+
 export type RouteResult = {
   label: string;
   alpha: number;
@@ -44,6 +53,38 @@ export async function fetchArizonaRegion(): Promise<ArizonaRegion> {
   if (!res.ok) {
     throw new Error(`Failed to load Arizona region (HTTP ${res.status})`);
   }
+  return res.json();
+}
+
+export async function searchPlaces(
+  query: string,
+  bbox?: number[],
+  signal?: AbortSignal
+): Promise<PlaceSearchResult[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const params = new URLSearchParams({
+    q: trimmed,
+    format: "jsonv2",
+    addressdetails: "1",
+    limit: "5",
+    countrycodes: "us",
+  });
+
+  if (bbox?.length === 4) {
+    const [west, south, east, north] = bbox;
+    params.set("viewbox", `${west},${north},${east},${south}`);
+    params.set("bounded", "1");
+  }
+
+  const language =
+    typeof navigator !== "undefined" && navigator.language ? navigator.language : "en";
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+    headers: { "Accept-Language": language },
+    signal,
+  });
+  if (!res.ok) throw new Error(`Place search failed (HTTP ${res.status})`);
   return res.json();
 }
 
