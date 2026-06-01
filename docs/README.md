@@ -46,8 +46,9 @@ Based on [*Walking in the Shade*](https://doi.org/10.1145/3678717.3691287) (SIGS
 | Step | Command (Phoenix metro) | Creates |
 |------|-------------------------|---------|
 | 1. Streets | `python scripts/bootstrap_arizona.py --preset az-phoenix` | `data/graphs/az-phoenix.*` |
-| 2. Shade (day) | `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14` | `data/shade-cache/az-phoenix.sqlite` |
-| 2b. Shade (night, optional) | [Pull + seed night hours](setup.md#night-shade-buckets-after-pulling-tanmay) | Night buckets in same SQLite file |
+| 2a. Shade (UTC 5 AM-7 PM) | `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19` | `data/shade-cache/az-phoenix.sqlite` |
+| 2b. Shade (Phoenix local 5 AM-7 PM) | `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2` | `data/shade-cache/az-phoenix.sqlite` |
+| 2c. Shade (night, optional) | [Pull + seed night hours](setup.md#night-shade-buckets) | Night buckets in same SQLite file |
 | 3. Warm (recommended) | API startup or `POST .../routing/warm` | `data/routing-cache/az-phoenix/` |
 
 Full walkthrough: [Setup guide](setup.md) → [Routing performance](performance.md).
@@ -82,7 +83,7 @@ UmbraStride/
 
 ---
 
-## Current features (`tanmay` branch)
+## Current features
 
 - **No metro dropdown** — AOI from map clicks (widest matching preset).
 - **Default metro:** `az-phoenix` (Phoenix / Tempe / Scottsdale).

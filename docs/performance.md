@@ -88,10 +88,10 @@ flowchart TB
 
 When the sun is below the horizon at **both** endpoints, shade is forced to **uniform full shade** (S = 1) before weights are built. Coolest and shortest then share the same path. The API sets `sun_below_horizon: true` and uses a separate routing-cache key (`uniform_full_shade`) so day and night buckets do not collide.
 
-**Seed night buckets** (after pulling `tanmay`; requires **astral** via `geo-core`):
+**Seed night buckets** (requires **astral** via `geo-core`):
 
 ```bash
-git pull origin tanmay
+git pull origin main
 source .venv/bin/activate
 pip install -e packages/geo-core   # pulls in astral
 python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5
@@ -142,7 +142,8 @@ DEFAULT_AOI_ID=az-phoenix
 # Performance (defaults in .env.example)
 ROUTING_DISK_CACHE=1
 ROUTING_WARM_ON_STARTUP=1
-ROUTING_WARM_HOURS=10,11,12,13,14
+# Phoenix local 5 AM-7 PM, expressed as UTC buckets
+ROUTING_WARM_HOURS=12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ROUTING_PATH_ENGINE=rustworkx
 ROUTING_USE_ASTAR=1
 ROUTING_LOCAL_MARGIN_DEG=0.012
@@ -174,10 +175,14 @@ Creates:
 ### Step 4 — Seed shade
 
 ```bash
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date 2026-05-22
+# 5 AM-7 PM UTC
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 --date 2026-05-22
+# 5 AM-7 PM Phoenix local (MST / UTC-7)
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2 --date 2026-05-22
 ```
 
 Creates `data/shade-cache/az-phoenix.sqlite`. Use the **same date** in the web datetime picker (or accept nearest-hour fallback).
+`--hours` is always UTC. For a pinned Phoenix-local date, seed `12..23` on the local date and `0..2` on the next UTC date if you need exact date alignment.
 
 ### Step 5 — Start API (triggers startup warm)
 
@@ -201,7 +206,7 @@ Warm specific hours without waiting for a route click:
 ```bash
 curl -s -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
   -H "Content-Type: application/json" \
-  -d '{"hours": [10, 11, 12, 13, 14], "alphas": [1.0, 0.0, 0.5]}'
+  -d '{"hours": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2], "alphas": [1.0, 0.0, 0.5]}'
 ```
 
 Response:

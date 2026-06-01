@@ -68,7 +68,7 @@ Set any to a positive integer to limit cores (e.g. `ROUTING_DIJKSTRA_WORKERS=4`)
 | `ROUTING_CORRIDOR_SCALES` | `0.6,1.0,1.6,3.0` | Expand corridor until a path exists (multipliers on margin). |
 | `ROUTING_DISK_CACHE` | `1` | Persist built routing DiGraph under `data/routing-cache/`. |
 | `ROUTING_WARM_ON_STARTUP` | `1` | Preload `DEFAULT_AOI_ID` when API starts. `npm run dev:api` defaults this to `0` for faster local startup unless you set it explicitly. |
-| `ROUTING_WARM_HOURS` | empty | Comma hours (UTC) to warm on startup, e.g. `10,11,12,13,14`. |
+| `ROUTING_WARM_HOURS` | empty | Comma hours (UTC) to warm on startup. Use `5,6,7,8,9,10,11,12,13,14,15,16,17,18,19` for 5 AM-7 PM UTC, or `12,13,14,15,16,17,18,19,20,21,22,23,0,1,2` for 5 AM-7 PM Phoenix local. |
 | `ROUTING_PATH_ENGINE` | `rustworkx` | `rustworkx` or `networkx` for shortest-path. |
 | `ROUTING_USE_ASTAR` | `1` | A* with geographic heuristic (disable if debugging). |
 
@@ -144,7 +144,10 @@ Plus:
 
 ```bash
 python scripts/bootstrap_arizona.py --preset az-phoenix
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14
+# 5 AM-7 PM UTC
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
+# 5 AM-7 PM Phoenix local (MST / UTC-7)
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ```
 
 ---

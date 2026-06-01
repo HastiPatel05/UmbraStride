@@ -130,7 +130,10 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```sh
 source .venv/bin/activate
 python scripts/bootstrap_arizona.py --preset az-phoenix
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date 2026-05-22
+# 5 AM-7 PM UTC
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 --date 2026-05-22
+# 5 AM-7 PM Phoenix local (MST / UTC-7)
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2 --date 2026-05-22
 ```
 
 **Windows PowerShell**
@@ -138,8 +141,13 @@ python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date
 ```powershell
 .\.venv\Scripts\Activate.ps1
 python scripts/bootstrap_arizona.py --preset az-phoenix
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date 2026-05-22
+# 5 AM-7 PM UTC
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 --date 2026-05-22
+# 5 AM-7 PM Phoenix local (MST / UTC-7)
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2 --date 2026-05-22
 ```
+
+`--hours` is always UTC. For a pinned Phoenix-local date, seed `12..23` on the local date and `0..2` on the next UTC date if you need exact date alignment.
 
 ### 5. Run
 
@@ -182,7 +190,7 @@ If Vite logs `http proxy error: /v1/regions/arizona` or `ECONNREFUSED 127.0.0.1:
 ```sh
 curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
   -H "Content-Type: application/json" \
-  -d '{"hours": [10, 11, 12, 13, 14]}'
+  -d '{"hours": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2]}'
 ```
 
 **Windows PowerShell**
@@ -191,8 +199,10 @@ curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
 Invoke-RestMethod -Method Post `
   -Uri http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm `
   -ContentType "application/json" `
-  -Body '{"hours": [10, 11, 12, 13, 14]}'
+  -Body '{"hours": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2]}'
 ```
+
+Use `[5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]` instead when warming 5 AM-7 PM UTC.
 
 ---
 
@@ -242,7 +252,8 @@ SUN_AVERSION_BETA=5.0
 SHADE_DISTANCE_TIEBREAK=0.001
 SHADE_BIAS_CURVE=3.0
 ROUTING_WARM_ON_STARTUP=1
-ROUTING_WARM_HOURS=10,11,12,13,14
+# Phoenix local 5 AM-7 PM, expressed as UTC buckets
+ROUTING_WARM_HOURS=12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 
 # apps/web/.env
 VITE_DEFAULT_AOI=az-phoenix
@@ -257,7 +268,8 @@ See [docs/configuration.md](docs/configuration.md).
 | Command | Purpose |
 |---------|---------|
 | `python scripts/bootstrap_arizona.py --preset az-phoenix` | Download walk streets |
-| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14` | Synthetic shade (day); night hours get uniform full shade |
+| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19` | Synthetic shade, 5 AM-7 PM UTC |
+| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2` | Synthetic shade, 5 AM-7 PM Phoenix local (UTC buckets) |
 | `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5` | Optional night shade buckets |
 | `npm run dev:api` | API dev server :8000, using `.venv` |
 | `POST /v1/aoi/az-phoenix/routing/warm` | Preload routing cache |

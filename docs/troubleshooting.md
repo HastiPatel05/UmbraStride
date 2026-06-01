@@ -168,7 +168,7 @@ Wait until bootstrap finishes (wide Phoenix can take several minutes).
 ```bash
 python scripts/bootstrap_arizona.py --list-tiles
 python scripts/bootstrap_arizona.py --tile az-tile--112.00_33.25
-python scripts/seed_demo_cache.py --aoi az-tile--112.00_33.25 --hours 10,11,12,13,14
+python scripts/seed_demo_cache.py --aoi az-tile--112.00_33.25 --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ```
 
 Cross-metro and multi-tile trips are not supported as one route today.
@@ -186,10 +186,10 @@ Cross-metro and multi-tile trips are not supported as one route today.
 **If they still differ at night:**
 
 1. Confirm datetime is truly night at **both** points (not dusk with one point still in daylight).
-2. Pull latest code, install `geo-core` (for **astral**), and re-seed night hours — full steps in [Setup — Night shade buckets](setup.md#night-shade-buckets-after-pulling-tanmay):
+2. Pull latest code from `main`, install `geo-core` (for **astral**), and re-seed night hours — full steps in [Setup — Night shade buckets](setup.md#night-shade-buckets):
 
    ```bash
-   git pull origin tanmay
+   git pull origin main
    source .venv/bin/activate
    pip install -e packages/geo-core   # pulls in astral
    python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5
@@ -207,7 +207,10 @@ Cross-metro and multi-tile trips are not supported as one route today.
 1. Seed cache for your AOI and **date/hour**:
 
    ```bash
-   python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date 2026-05-22
+   # 5 AM-7 PM UTC
+   python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 --date 2026-05-22
+   # 5 AM-7 PM Phoenix local (MST / UTC-7)
+   python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2 --date 2026-05-22
    ```
 
 2. Make sure `AUTO_SHADE_SEED=1` is enabled, or match the web app **datetime** to seeded hours.
@@ -222,14 +225,14 @@ Cross-metro and multi-tile trips are not supported as one route today.
 1. Enable warm in `.env`:
    ```env
    ROUTING_WARM_ON_STARTUP=1
-   ROUTING_WARM_HOURS=10,11,12,13,14
+   ROUTING_WARM_HOURS=12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
    ROUTING_DISK_CACHE=1
    ```
 2. After API starts, run manual warm:
    ```bash
    curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
      -H "Content-Type: application/json" \
-     -d '{"hours": [10, 11, 12, 13, 14]}'
+     -d '{"hours": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2]}'
    ```
 3. Verify: `ls data/routing-cache/az-phoenix/` should show `*.routing.pkl`.
 4. Keep API running between clicks (RAM cache). Dev `--reload` restarts process and clears RAM.
@@ -336,7 +339,7 @@ curl "http://127.0.0.1:8000/v1/aoi/az-phoenix/cache/coverage"
 # Warm routing cache
 curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
   -H "Content-Type: application/json" \
-  -d '{"hours": [10, 11, 12, 13, 14]}'
+  -d '{"hours": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2]}'
 
 # List graphs and caches on disk
 ls -la data/graphs/

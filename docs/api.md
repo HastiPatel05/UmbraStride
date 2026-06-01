@@ -182,7 +182,7 @@ Use after bootstrap/seed or before a demo to avoid a slow first `POST /v1/route`
 ```json
 {
   "datetime": "2026-05-22T12:00:00Z",
-  "hours": [10, 11, 12, 13, 14],
+  "hours": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2],
   "alphas": [1.0, 0.0, 0.5]
 }
 ```
@@ -190,7 +190,7 @@ Use after bootstrap/seed or before a demo to avoid a slow first `POST /v1/route`
 | Field | Description |
 |-------|-------------|
 | `datetime` | Warm this specific time bucket (15-min floor) |
-| `hours` | UTC hours on **today's date** to warm (e.g. noon → current UTC date at 12:00) |
+| `hours` | UTC hours on **today's date** to warm. Use `[5, 6, ..., 19]` for 5 AM-7 PM UTC, or `[12, 13, ..., 23, 0, 1, 2]` for 5 AM-7 PM Phoenix local (MST / UTC-7). |
 | `alphas` | α values to include in cached routing graph (default `[1.0, 0.0, 0.5]`) |
 
 If both `datetime` and `hours` omitted, warms **current UTC** bucket only.
@@ -208,7 +208,7 @@ If both `datetime` and `hours` omitted, warms **current UTC** bucket only.
 
 **Errors:** `404` if graph not bootstrapped.
 
-**Startup equivalent:** set `ROUTING_WARM_ON_STARTUP=1` and `ROUTING_WARM_HOURS=10,11,12,13,14` in `.env`. See [Routing performance](performance.md).
+**Startup equivalent:** set `ROUTING_WARM_ON_STARTUP=1` and `ROUTING_WARM_HOURS=12,13,14,15,16,17,18,19,20,21,22,23,0,1,2` in `.env` for 5 AM-7 PM Phoenix local, or `5,6,7,8,9,10,11,12,13,14,15,16,17,18,19` for UTC. See [Routing performance](performance.md).
 
 ---
 
