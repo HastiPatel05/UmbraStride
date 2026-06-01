@@ -1,7 +1,9 @@
 # Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 from umbrastride_routing.graph_build import build_routing_digraph, alpha_weight_key
+from umbrastride_routing.cache import _shade_db_mtime
 from umbrastride_routing.router import edge_weight
 import networkx as nx
+import os
 
 
 def test_build_routing_digraph_single_pass():
@@ -37,3 +39,18 @@ def test_parallel_edges_keep_alpha_specific_route_payloads():
     assert coolest_payload["edge_key"] == "1|2|1"
     assert coolest_payload["length_m"] == 120.0
     assert coolest_payload["shade_fraction"] == 1.0
+
+
+def test_shade_db_mtime_tracks_wal_sidecar(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    cache_dir = tmp_path / "shade-cache"
+    cache_dir.mkdir()
+    db = cache_dir / "test.sqlite"
+    wal = cache_dir / "test.sqlite-wal"
+    db.write_text("")
+    wal.write_text("")
+
+    os.utime(db, (100, 100))
+    os.utime(wal, (200, 200))
+
+    assert _shade_db_mtime("test") == 200

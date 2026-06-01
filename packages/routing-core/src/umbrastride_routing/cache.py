@@ -30,7 +30,11 @@ def _graph_mtime(aoi_id: str) -> float:
 
 def _shade_db_mtime(aoi_id: str) -> float:
     path = resolve_data_dir() / "shade-cache" / f"{aoi_id}.sqlite"
-    return path.stat().st_mtime if path.exists() else 0.0
+    # SQLite runs in WAL mode, so fresh shade writes may live in the sidecar
+    # files before the main DB file is checkpointed. Include them in the cache
+    # key so route graphs rebuild after external seed/precompute writes.
+    paths = (path, path.with_name(f"{path.name}-wal"), path.with_name(f"{path.name}-shm"))
+    return max((p.stat().st_mtime for p in paths if p.exists()), default=0.0)
 
 
 @lru_cache(maxsize=8)
