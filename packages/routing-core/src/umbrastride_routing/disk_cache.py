@@ -8,9 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import networkx as nx
-
 from umbrastride_geo.aoi import resolve_data_dir, routing_cache_dir
-from umbrastride_routing.graph_build import alpha_weight_key
 
 ROUTING_CACHE_VERSION = 6
 

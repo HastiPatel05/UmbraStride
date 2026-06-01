@@ -1,12 +1,11 @@
 # Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 from datetime import datetime, timezone
 
+from test_routing_graph import _synthetic_graph
 from umbrastride_routing.synthetic_seed import (
     ensure_synthetic_shade_bucket,
     synthetic_shade_fraction,
 )
-
-from test_routing_graph import _synthetic_graph
 
 
 def test_ensure_synthetic_shade_bucket_seeds_missing(tmp_path, monkeypatch):

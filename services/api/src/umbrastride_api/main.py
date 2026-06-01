@@ -5,14 +5,12 @@ import asyncio
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-
 from umbrastride_geo import (
     bootstrap_aoi,
     graph_to_geojson,
@@ -25,8 +23,13 @@ from umbrastride_geo import (
     routable_aois_containing_both,
     tile_records,
 )
-from umbrastride_geo.regions import bbox_to_str, estimate_tile_count, get_preset, iter_tile_bboxes
-from umbrastride_routing import ShadeStore, compute_routes, ensure_synthetic_shade_bucket, warm_routing_cache
+from umbrastride_geo.regions import bbox_to_str, estimate_tile_count, get_preset
+from umbrastride_routing import (
+    ShadeStore,
+    compute_routes,
+    ensure_synthetic_shade_bucket,
+    warm_routing_cache,
+)
 from umbrastride_routing.shade_store import floor_ts_bucket
 
 load_dotenv()

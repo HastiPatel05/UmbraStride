@@ -1,9 +1,8 @@
 # Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 import pytest
 from fastapi import HTTPException
-
-from umbrastride_geo.regions import load_region, point_in_bbox, tile_records
 from umbrastride_api.main import LngLat, RouteRequest, get_region, health, post_route
+from umbrastride_geo.regions import load_region, point_in_bbox, tile_records
 
 
 def _rural_tile_points():

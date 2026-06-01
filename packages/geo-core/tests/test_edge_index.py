@@ -1,13 +1,10 @@
 # Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
-import json
-import pickle
 
 import networkx as nx
 from shapely.geometry import LineString
-
+from umbrastride_geo.edge_index import build_edge_index, ensure_edge_index
 from umbrastride_geo.edges import edge_key, parse_edge_key
 from umbrastride_geo.graph import geometry_for_edge_key
-from umbrastride_geo.edge_index import build_edge_index, ensure_edge_index
 
 
 def test_build_edge_index_order():

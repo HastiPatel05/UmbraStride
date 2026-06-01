@@ -5,6 +5,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
+import numpy as np
 from umbrastride_geo.aoi import resolve_data_dir
 
 
@@ -117,8 +118,6 @@ class ShadeStore:
         default: float = 0.5,
     ) -> np.ndarray:
         """Load shade into a dense float32 array indexed by edge_key order."""
-        import numpy as np
-
         arr = np.full(n_edges, default, dtype=np.float32)
         with self._connect() as conn:
             rows = conn.execute(
@@ -210,7 +209,10 @@ class ShadeStore:
         with self._connect() as conn:
             if ts_bucket:
                 cached = conn.execute(
-                    "SELECT COUNT(DISTINCT edge_key) FROM edge_shade WHERE aoi_id = ? AND ts_bucket = ?",
+                    """
+                    SELECT COUNT(DISTINCT edge_key) FROM edge_shade
+                    WHERE aoi_id = ? AND ts_bucket = ?
+                    """,
                     (self.aoi_id, ts_bucket),
                 ).fetchone()[0]
             else:

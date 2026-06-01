@@ -7,9 +7,9 @@ from typing import Any
 
 import networkx as nx
 from shapely.geometry import LineString, mapping
-
 from umbrastride_geo.graph import geometry_for_edge_key, snap_point_to_graph
 from umbrastride_geo.sun import is_route_at_night
+
 from umbrastride_routing.cache import get_graph, get_routing_graph_for_alphas
 from umbrastride_routing.graph_build import alpha_weight_key as _alpha_weight_key
 from umbrastride_routing.pathfind import corridor_subgraph, run_shortest_paths_batch
@@ -23,7 +23,10 @@ def _edge_route_payload(data: dict[str, Any], weight_attr: str) -> dict[str, Any
     return data.get("route_payloads", {}).get(weight_attr, data)
 
 
-def _append_path_coords(coords: list[tuple[float, float]], segment: list[tuple[float, float]]) -> None:
+def _append_path_coords(
+    coords: list[tuple[float, float]],
+    segment: list[tuple[float, float]],
+) -> None:
     """Append segment vertices, skipping duplicates at joins."""
     if not segment:
         return

@@ -1,18 +1,19 @@
 # Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
-import networkx as nx
 from datetime import datetime, timezone
 
+import networkx as nx
+from umbrastride_geo.graph import edge_key
 from umbrastride_routing.router import compute_routes
 from umbrastride_routing.shade_store import ShadeStore, floor_ts_bucket
-from umbrastride_geo.graph import edge_key
 
 
 def _synthetic_graph(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
-    from shapely.geometry import LineString
     import json
-    from umbrastride_geo.aoi import aoi_graph_path, aoi_meta_path, resolve_data_dir
+
     import osmnx as ox
+    from shapely.geometry import LineString
+    from umbrastride_geo.aoi import aoi_graph_path, aoi_meta_path, resolve_data_dir
 
     G = nx.MultiDiGraph()
     G.graph["crs"] = "epsg:4326"

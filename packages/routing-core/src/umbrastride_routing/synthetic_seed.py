@@ -16,6 +16,7 @@ from umbrastride_geo.sun import (
     sun_altitude_deg,
     sun_azimuth_deg,
 )
+
 from umbrastride_routing.cache import clear_caches, get_graph
 from umbrastride_routing.shade_store import ShadeStore, floor_ts_bucket
 
@@ -94,7 +95,10 @@ def bucket_coverage_fraction(aoi_id: str, ts_bucket: str) -> float:
     return cached / n_edges
 
 
-def build_synthetic_rows_for_bucket(aoi_id: str, dt: datetime) -> tuple[str, list[tuple[str, str, float, int]]]:
+def build_synthetic_rows_for_bucket(
+    aoi_id: str,
+    dt: datetime,
+) -> tuple[str, list[tuple[str, str, float, int]]]:
     """Build bulk_set rows for one time bucket."""
     dt = _bucket_dt(dt)
     tb = floor_ts_bucket(dt)

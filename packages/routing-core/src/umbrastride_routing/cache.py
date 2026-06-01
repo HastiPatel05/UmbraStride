@@ -8,15 +8,18 @@ from functools import lru_cache
 
 import networkx as nx
 import numpy as np
-
 from umbrastride_geo.aoi import aoi_graph_path, resolve_data_dir
 from umbrastride_geo.edge_index import ensure_edge_index, load_edge_index
 from umbrastride_geo.graph import load_graph
 from umbrastride_geo.sun import NIGHT_UNIFORM_SHADE
-from umbrastride_routing.disk_cache import RoutingCacheKey, load_routing_digraph, save_routing_digraph
+
+from umbrastride_routing.disk_cache import (
+    RoutingCacheKey,
+    load_routing_digraph,
+    save_routing_digraph,
+)
 from umbrastride_routing.graph_build import build_routing_digraph
 from umbrastride_routing.shade_store import ShadeStore, floor_ts_bucket
-
 
 _graph_lock = threading.Lock()
 _shade_lock = threading.Lock()
