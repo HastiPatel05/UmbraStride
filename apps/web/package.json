@@ -2,6 +2,8 @@
   "name": "@umbrastride/web",
   "version": "0.1.0",
   "private": true,
+  "author": "Tanmay Godse and Hasti Pareshbhai Patel",
+  "license": "CC-BY-NC-4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 /**
  * Live building shadows on the map — no ShadeMap API.
  * Sun position: SunCalc (browser). Routing uses Python `astral` (same astronomy).

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 import type { LngLat, ShadeProfilePoint } from "@umbrastride/shared-types";
 import { getSunPosition, NIGHT_UNIFORM_SHADE } from "./sun.js";
 

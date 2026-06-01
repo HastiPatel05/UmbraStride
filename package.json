@@ -3,6 +3,8 @@
   "private": true,
   "version": "0.1.0",
   "description": "Shadow-oriented pedestrian navigation",
+  "author": "Tanmay Godse and Hasti Pareshbhai Patel",
+  "license": "CC-BY-NC-4.0",
   "workspaces": [
     "packages/*",
     "services/*",

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 import type { LngLat, ShadeProfilePoint } from "@umbrastride/shared-types";
 import { buildingAwareShadeProfile } from "./building-shade.js";
 import { syntheticShadeProfile } from "./synthetic.js";

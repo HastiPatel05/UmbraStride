@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 """Synthetic shade cache seeding (no ShadeMap) — used by API and seed_demo_cache.py."""
 
 from __future__ import annotations

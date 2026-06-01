@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
+
 import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { join } from "node:path";

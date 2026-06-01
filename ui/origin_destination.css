@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved. */
 *{box-sizing:border-box;font-family:Segoe UI, Roboto, Arial, sans-serif}
 .od-container{max-width:780px;margin:20px auto;display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end}
 .od-label{display:flex;flex-direction:column}

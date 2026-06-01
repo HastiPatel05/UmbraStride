@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 """Bootstrap pedestrian graphs for Arizona (metros or grid tiles)."""
 
 from __future__ import annotations

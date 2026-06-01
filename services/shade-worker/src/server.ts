@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 import cors from "cors";
 import express from "express";
 import type { ShadeProfileRequest, ShadeProfileResponse } from "@umbrastride/shared-types";

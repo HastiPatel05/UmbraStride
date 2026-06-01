@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 # Bootstrap Arizona metro graph(s) and seed synthetic shade cache.
 # Usage:
 #   .\scripts\seed_arizona.ps1

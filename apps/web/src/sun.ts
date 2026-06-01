@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 /**
  * Sun position for map shadows (browser).
  * Backend routing uses Python `astral` in umbrastride_geo.sun — same astronomy, different library.
