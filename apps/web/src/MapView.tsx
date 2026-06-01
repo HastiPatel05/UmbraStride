@@ -63,6 +63,14 @@ function expandedBbox(bbox: number[]): [[number, number], [number, number]] {
   ];
 }
 
+function bboxBounds(bbox: number[]): [[number, number], [number, number]] {
+  const [west, south, east, north] = bbox;
+  return [
+    [west, south],
+    [east, north],
+  ];
+}
+
 function sameCoord(a: [number, number], b: [number, number]): boolean {
   return Math.abs(a[0] - b[0]) < 1e-9 && Math.abs(a[1] - b[1]) < 1e-9;
 }
@@ -263,6 +271,7 @@ export default function MapView({
     const map = mapRef.current;
     if (!map || !metroBbox) return;
     map.setMaxBounds(expandedBbox(metroBbox));
+    map.fitBounds(bboxBounds(metroBbox), { padding: 72, maxZoom: 14.5, duration: 800 });
   }, [metroBbox]);
 
   useEffect(() => {
