@@ -11,7 +11,7 @@ For a friendly overview, see [User guide](user-guide.md) and [Architecture](arch
 ## Conventions
 
 - **Coordinates:** `lng` (longitude), `lat` (latitude), WGS84.
-- **Time:** ISO 8601 strings; UTC recommended (e.g. `2026-05-22T12:00:00Z`).
+- **Time:** ISO 8601 strings; UTC recommended (e.g. `2026-06-01T12:00:00Z`).
 - **Errors:** JSON `{"detail": "message"}` with HTTP 4xx/5xx.
 - **CORS:** Configured via `API_CORS_ORIGINS` in `.env`.
 
@@ -122,7 +122,7 @@ Format: `west,south,east,north`.
 
 ### `GET /v1/aoi/{aoi_id}/cache/coverage`
 
-Optional query: `?ts_bucket=2026-05-22T12:00`
+Optional query: `?ts_bucket=2026-06-01T12:00`
 
 **Response:**
 
@@ -132,7 +132,7 @@ Optional query: `?ts_bucket=2026-05-22T12:00`
   "total_edges": 560496,
   "cached_edges": 139340,
   "coverage_ratio": 0.248,
-  "ts_buckets": ["2026-05-22T10:00", "2026-05-22T11:00"],
+  "ts_buckets": ["2026-06-01T10:00", "2026-06-01T11:00"],
   "ts_bucket": null
 }
 ```
@@ -147,7 +147,7 @@ Ping shade worker with a sample of edge midpoints (does not full precompute).
 
 ```json
 {
-  "datetime": "2026-05-22T12:00:00Z",
+  "datetime": "2026-06-01T12:00:00Z",
   "edge_keys": null,
   "persist_sample": false
 }
@@ -163,7 +163,7 @@ Ping shade worker with a sample of edge midpoints (does not full precompute).
 ```json
 {
   "status": "worker_ok",
-  "ts_bucket": "2026-05-22T12:00",
+  "ts_bucket": "2026-06-01T12:00",
   "sampled_points": 200,
   "hint": "Run scripts/precompute_shade.py for full edge cache"
 }
@@ -181,7 +181,7 @@ Use after bootstrap/seed or before a demo to avoid a slow first `POST /v1/route`
 
 ```json
 {
-  "datetime": "2026-05-22T12:00:00Z",
+  "datetime": "2026-06-01T12:00:00Z",
   "hours": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2],
   "alphas": [1.0, 0.0, 0.5]
 }
@@ -201,7 +201,7 @@ If both `datetime` and `hours` omitted, warms **current UTC** bucket only.
 {
   "status": "warmed",
   "aoi_id": "az-phoenix",
-  "warmed_buckets": ["2026-05-22T12:00", "2026-05-22T10:00"],
+  "warmed_buckets": ["2026-06-01T12:00", "2026-06-01T10:00"],
   "alphas": [1.0, 0.0, 0.5]
 }
 ```
@@ -227,7 +227,7 @@ When automatic local shade is enabled, this endpoint first ensures the requested
   "aoi_id": null,
   "origin": { "lng": -112.08, "lat": 33.45 },
   "destination": { "lng": -112.05, "lat": 33.46 },
-  "datetime": "2026-05-22T12:00:00Z",
+  "datetime": "2026-06-01T12:00:00Z",
   "alpha": 0.35
 }
 ```
@@ -247,8 +247,8 @@ When automatic local shade is enabled, this endpoint first ensures the requested
   "aoi_id": "az-phoenix",
   "origin_node": 12345,
   "dest_node": 67890,
-  "ts_bucket": "2026-05-22T12:00",
-  "shade_ts_bucket": "2026-05-22T12:00",
+  "ts_bucket": "2026-06-01T12:00",
+  "shade_ts_bucket": "2026-06-01T12:00",
   "shade_cache_exact": true,
   "sun_below_horizon": false,
   "routes": [
@@ -259,7 +259,7 @@ When automatic local shade is enabled, this endpoint first ensures the requested
       "distance_m": 2863.9,
       "shade_fraction": 0.683,
       "detour_ratio": 1.0,
-      "ts_bucket": "2026-05-22T12:00"
+      "ts_bucket": "2026-06-01T12:00"
     },
     {
       "label": "coolest",
@@ -268,7 +268,7 @@ When automatic local shade is enabled, this endpoint first ensures the requested
       "distance_m": 2903.3,
       "shade_fraction": 0.73,
       "detour_ratio": 1.014,
-      "ts_bucket": "2026-05-22T12:00"
+      "ts_bucket": "2026-06-01T12:00"
     },
     {
       "label": "custom",
@@ -277,7 +277,7 @@ When automatic local shade is enabled, this endpoint first ensures the requested
       "distance_m": 2874.1,
       "shade_fraction": 0.715,
       "detour_ratio": 1.004,
-      "ts_bucket": "2026-05-22T12:00"
+      "ts_bucket": "2026-06-01T12:00"
     }
   ]
 }
@@ -312,7 +312,7 @@ curl -s -X POST http://127.0.0.1:8000/v1/route \
   -d '{
     "origin": {"lng": -112.08, "lat": 33.45},
     "destination": {"lng": -112.05, "lat": 33.46},
-    "datetime": "2026-05-22T12:00:00Z",
+    "datetime": "2026-06-01T12:00:00Z",
     "alpha": 0.35
   }' | python3 -m json.tool
 ```

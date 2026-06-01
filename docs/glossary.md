@@ -120,7 +120,7 @@ Plain-language definitions for terms used in UmbraStride docs and the app.
 
 **Tile (grid tile)** — Small fixed cells covering all of Arizona for advanced statewide coverage. Hundreds of tiles; bootstrap on demand. See [Arizona coverage](arizona.md).
 
-**Time bucket (`ts_bucket`)** — Shade data is stored per **15-minute** UTC window, e.g. `2026-05-22T12:00`. When automatic local shade is enabled, route requests sync the selected bucket before computing and the API background sync refreshes roughly every 10 minutes.
+**Time bucket (`ts_bucket`)** — Shade data is stored per **15-minute** UTC window, e.g. `2026-06-01T12:00`. When automatic local shade is enabled, route requests sync the selected bucket before computing and the API background sync refreshes roughly every 10 minutes.
 
 ---
 

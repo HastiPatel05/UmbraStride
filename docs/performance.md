@@ -176,13 +176,13 @@ Creates:
 
 ```bash
 # 5 AM-7 PM UTC
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 --date 2026-05-22
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
 # 5 AM-7 PM Phoenix local (MST / UTC-7)
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2 --date 2026-05-22
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ```
 
-Creates `data/shade-cache/az-phoenix.sqlite`. Use the **same date** in the web datetime picker (or accept nearest-hour fallback).
-`--hours` is always UTC. For a pinned Phoenix-local date, seed `12..23` on the local date and `0..2` on the next UTC date if you need exact date alignment.
+Creates `data/shade-cache/az-phoenix.sqlite`. By default, the seed date is today's UTC date; use the same date in the web datetime picker, or accept nearest-hour fallback.
+`--hours` is always UTC. For a pinned Phoenix-local date with `--date YYYY-MM-DD`, seed `12..23` on the local date and `0..2` on the next UTC date if you need exact date alignment.
 
 ### Step 5 — Start API (triggers startup warm)
 
@@ -215,7 +215,7 @@ Response:
 {
   "status": "warmed",
   "aoi_id": "az-phoenix",
-  "warmed_buckets": ["2026-05-22T12:00", "..."],
+  "warmed_buckets": ["2026-06-01T12:00", "..."],
   "alphas": [1.0, 0.0, 0.5]
 }
 ```

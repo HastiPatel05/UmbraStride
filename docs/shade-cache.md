@@ -49,7 +49,7 @@ flowchart TB
 |-------|--------|---------|
 | `aoi_id` | Metro id | `az-phoenix` |
 | `edge_key` | Segment id | `41190548\|7093578437\|0` |
-| `ts_bucket` | UTC, 15-min floor | `2026-05-22T12:00` |
+| `ts_bucket` | UTC, 15-min floor | `2026-06-01T12:00` |
 
 **Edge index:** `data/graphs/{aoi}.edge-index.json` maps each `edge_key` to a dense index so shade loads as a **NumPy array** (fast graph build).
 
@@ -67,9 +67,9 @@ If automatic shade is disabled or a bucket cannot be generated, the router can f
 
 ```bash
 # 5 AM-7 PM UTC
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 --date 2026-05-22
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
 # 5 AM-7 PM Phoenix local (MST / UTC-7)
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2 --date 2026-05-22
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ```
 
 ### SQLite concurrency
@@ -238,7 +238,7 @@ Full table: [Configuration](configuration.md).
 
 ```http
 GET /v1/aoi/az-phoenix/cache/coverage
-GET /v1/aoi/az-phoenix/cache/coverage?ts_bucket=2026-05-22T12:00
+GET /v1/aoi/az-phoenix/cache/coverage?ts_bucket=2026-06-01T12:00
 ```
 
 ### Shade warm (worker sample)
@@ -247,7 +247,7 @@ GET /v1/aoi/az-phoenix/cache/coverage?ts_bucket=2026-05-22T12:00
 POST /v1/aoi/az-phoenix/cache/warm
 Content-Type: application/json
 
-{"datetime": "2026-05-22T12:00:00Z", "persist_sample": false}
+{"datetime": "2026-06-01T12:00:00Z", "persist_sample": false}
 ```
 
 Up to 200 sample points. Set `"persist_sample": true` to write those edges into SQLite (partial bucket).

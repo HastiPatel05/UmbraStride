@@ -171,14 +171,14 @@ Covers Phoenix, Tempe, Scottsdale. Matches app default `az-phoenix`.
 source .venv/bin/activate   # if not already
 python scripts/bootstrap_arizona.py --preset az-phoenix
 # 5 AM-7 PM UTC
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 --date 2026-05-22
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
 # 5 AM-7 PM Phoenix local (MST / UTC-7)
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2 --date 2026-05-22
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ```
 
 **Windows:** same commands with venv activated.
 
-`--hours` is always UTC. For a pinned Phoenix-local date, seed `12..23` on the local date and `0..2` on the next UTC date if you need exact date alignment.
+`--date` defaults to today's UTC date, and `--hours` is always UTC. For a pinned Phoenix-local date with `--date YYYY-MM-DD`, seed `12..23` on the local date and `0..2` on the next UTC date if you need exact date alignment.
 
 **Creates:**
 

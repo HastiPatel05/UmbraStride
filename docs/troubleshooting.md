@@ -208,9 +208,9 @@ Cross-metro and multi-tile trips are not supported as one route today.
 
    ```bash
    # 5 AM-7 PM UTC
-   python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 --date 2026-05-22
+   python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
    # 5 AM-7 PM Phoenix local (MST / UTC-7)
-   python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2 --date 2026-05-22
+   python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
    ```
 
 2. Make sure `AUTO_SHADE_SEED=1` is enabled, or match the web app **datetime** to seeded hours.
