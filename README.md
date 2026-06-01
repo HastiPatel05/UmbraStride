@@ -4,6 +4,8 @@ Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 
 This branch, `vercel-deploy`, contains the bounded Vercel Hobby deployment for UmbraStride. It is intentionally not the full Arizona deployment.
 
+**Live Vercel deployment:** [https://umbrastride.vercel.app/](https://umbrastride.vercel.app/)
+
 ## What This Branch Is
 
 - **Frontend:** Vite app from `apps/web`, served by Vercel.
