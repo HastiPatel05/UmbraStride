@@ -1,17 +1,15 @@
-# Vercel Hobby demo deployment
+# Vercel Hobby Demo Deployment
 
 This page documents the `vercel-deploy` branch. It is a constrained Vercel Hobby deployment, not the full Arizona deployment.
 
 For the full project deployment, use the `main` branch docs:
 
-- [Setup guide](setup.md)
-- [Arizona coverage](arizona.md)
-- [Docker guide](docker.md)
-- [Routing performance](performance.md)
+- [Setup guide](https://github.com/HastiPatel05/UmbraStride/blob/main/docs/setup.md)
+- [Arizona coverage](https://github.com/HastiPatel05/UmbraStride/blob/main/docs/arizona.md)
+- [Docker guide](https://github.com/HastiPatel05/UmbraStride/blob/main/docs/docker.md)
+- [Routing performance](https://github.com/HastiPatel05/UmbraStride/blob/main/docs/performance.md)
 
----
-
-## What this branch deploys
+## What This Branch Deploys
 
 | Part | Vercel demo behavior |
 |------|----------------------|
@@ -26,9 +24,7 @@ For the full project deployment, use the `main` branch docs:
 
 The Vercel branch exists to show a real Phoenix route demo without requiring a VPS, Docker Compose, or a large persistent data volume.
 
----
-
-## Why the map has a bounding box
+## Why The Map Has A Bounding Box
 
 The live demo only packages this AOI:
 
@@ -49,9 +45,7 @@ Because only this bbox is packaged:
 
 This prevents users from selecting points that the Vercel runtime cannot route.
 
----
-
-## Why this is different from `main`
+## Why This Is Different From `main`
 
 The `main` branch is the source of truth for the complete deployment model:
 
@@ -65,9 +59,7 @@ The `main` branch is the source of truth for the complete deployment model:
 
 This `vercel-deploy` branch keeps only enough runtime data and code to make the Vercel Hobby demo reliable.
 
----
-
-## Vercel settings
+## Vercel Settings
 
 Use the repo root as the Vercel project root because the deployment needs both `apps/web` and `api/index.py`.
 
@@ -92,8 +84,6 @@ ROUTING_DISK_CACHE=0
 ROUTING_WARM_ON_STARTUP=0
 ```
 
----
-
-## Operational rule
+## Operational Rule
 
 Keep `data-vercel/` compact. Do not commit the full `data/` directory, routing-cache files, or shade SQLite databases to this branch. If the demo bbox expands, re-check Vercel bundle size, function memory, function duration, and route response payload size before deploying.
