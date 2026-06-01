@@ -319,4 +319,5 @@ See [docs/configuration.md](docs/configuration.md).
 - **Research:** Yu Feng et al., SIGSPATIAL 2024 — [doi.org/10.1145/3678717.3691287](https://doi.org/10.1145/3678717.3691287)
 - **Shadows:** SunCalc + OSM/OpenFreeMap building footprints
 - **Streets:** [OpenStreetMap](https://www.openstreetmap.org/) via [OSMnx](https://osmnx.readthedocs.io/)
+- **OSMnx citation:** Boeing, G. (2025). Modeling and Analyzing Urban Networks and Amenities with OSMnx. *Geographical Analysis*, 57(4), 567-577. [doi.org/10.1111/gean.70009](https://doi.org/10.1111/gean.70009)
 - **Basemap / 3D:** [OpenFreeMap](https://openfreemap.org/)
