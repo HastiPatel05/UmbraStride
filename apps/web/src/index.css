@@ -337,6 +337,12 @@ input[type="range"] {
   font-weight: 600;
 }
 
+.demo-boundary-legend {
+  color: #fde68a;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
 .shade-banner {
   position: absolute;
   bottom: 12px;

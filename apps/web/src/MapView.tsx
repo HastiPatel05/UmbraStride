@@ -48,6 +48,21 @@ const CONNECTOR_LINE_COLOR_EXPR: maplibregl.ExpressionSpecification = [
   "#10b981",
 ];
 
+function pointInBbox(lng: number, lat: number, bbox: number[]): boolean {
+  const [west, south, east, north] = bbox;
+  return lng >= west && lng <= east && lat >= south && lat <= north;
+}
+
+function expandedBbox(bbox: number[]): [[number, number], [number, number]] {
+  const [west, south, east, north] = bbox;
+  const lngPad = Math.max((east - west) * 0.35, 0.002);
+  const latPad = Math.max((north - south) * 0.35, 0.002);
+  return [
+    [west - lngPad, south - latPad],
+    [east + lngPad, north + latPad],
+  ];
+}
+
 function sameCoord(a: [number, number], b: [number, number]): boolean {
   return Math.abs(a[0] - b[0]) < 1e-9 && Math.abs(a[1] - b[1]) < 1e-9;
 }
@@ -176,8 +191,10 @@ export default function MapView({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const pickModeRef = useRef(pickMode);
   const onPickPointRef = useRef(onPickPoint);
+  const metroBboxRef = useRef(metroBbox);
   pickModeRef.current = pickMode;
   onPickPointRef.current = onPickPoint;
+  metroBboxRef.current = metroBbox;
 
   const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
 
@@ -202,6 +219,14 @@ export default function MapView({
 
     map.on("click", (e) => {
       onPickPointRef.current(pickModeRef.current, e.lngLat.lng, e.lngLat.lat);
+    });
+    map.on("mousemove", (e) => {
+      const bbox = metroBboxRef.current;
+      map.getCanvas().style.cursor =
+        !bbox || pointInBbox(e.lngLat.lng, e.lngLat.lat, bbox) ? "crosshair" : "not-allowed";
+    });
+    map.on("mouseleave", () => {
+      map.getCanvas().style.cursor = "";
     });
 
     mapRef.current = map;
@@ -236,23 +261,31 @@ export default function MapView({
 
   useEffect(() => {
     const map = mapRef.current;
+    if (!map || !metroBbox) return;
+    map.setMaxBounds(expandedBbox(metroBbox));
+  }, [metroBbox]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     if (!map || !stateBbox) return;
     const applyState = () => {
       const [west, south, east, north] = stateBbox;
-      const fc: GeoJSON.FeatureCollection = {
+      const fc: GeoJSON.FeatureCollection<GeoJSON.Polygon> = {
         type: "FeatureCollection",
         features: [
           {
             type: "Feature",
             properties: {},
             geometry: {
-              type: "LineString",
+              type: "Polygon",
               coordinates: [
-                [west, south],
-                [east, south],
-                [east, north],
-                [west, north],
-                [west, south],
+                [
+                  [west, south],
+                  [east, south],
+                  [east, north],
+                  [west, north],
+                  [west, south],
+                ],
               ],
             },
           },
@@ -306,13 +339,18 @@ export default function MapView({
           id: "metro-bbox-fill",
           type: "fill",
           source: "metro-bbox",
-          paint: { "fill-color": "#3d9be9", "fill-opacity": 0.06 },
+          paint: { "fill-color": "#fbbf24", "fill-opacity": 0.1 },
         });
         map.addLayer({
           id: "metro-bbox-line",
           type: "line",
           source: "metro-bbox",
-          paint: { "line-color": "#3d9be9", "line-width": 2, "line-opacity": 0.55 },
+          paint: {
+            "line-color": "#fbbf24",
+            "line-width": 3,
+            "line-opacity": 0.95,
+            "line-dasharray": [2, 1],
+          },
         });
       }
     };
@@ -603,8 +641,9 @@ export default function MapView({
             <span className="legend-swatch legend-custom">purple</span> your route
           </span>
         )}
+        {metroBbox && <span className="demo-boundary-legend">Outlined box = demo area</span>}
         <span className="pick-hint">
-          Click the <strong>map</strong> to place the active point (use sidebar buttons to switch).
+          Click inside the <strong>outlined box</strong> to place the active point.
           Shadows use local SunCalc (no API key).
         </span>
       </div>

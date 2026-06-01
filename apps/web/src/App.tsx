@@ -10,7 +10,7 @@ import {
   type RouteResult,
   type SnappedPoint,
 } from "./api";
-import { resolveAoiForRoute, resolvePresetForPoint } from "./resolveAoi";
+import { pointInBbox, resolveAoiForRoute, resolvePresetForPoint } from "./resolveAoi";
 
 const DEFAULT_AOI = import.meta.env.VITE_DEFAULT_AOI || "az-phoenix-vercel";
 const PHOENIX_CENTER: [number, number] = [-112.07, 33.48];
@@ -58,6 +58,14 @@ function collapseIdenticalRoutes(routes: RouteResult[]): RouteResult[] {
       routes.find((route) => route.label === "coolest") ??
       routes[0],
   ];
+}
+
+function sameBbox(a?: number[], b?: number[]): boolean {
+  return Boolean(
+    a?.length === 4 &&
+      b?.length === 4 &&
+      a.every((value, index) => Math.abs(value - b[index]) < 1e-9)
+  );
 }
 
 type LocationSearchProps = {
@@ -266,6 +274,15 @@ export default function App() {
   );
 
   const metroBbox = activePreset?.bbox;
+  const demoBbox = metroBbox ?? region?.bbox;
+  const stateBoundaryBbox = sameBbox(region?.bbox, metroBbox) ? undefined : region?.bbox;
+  const demoBoundaryError = activePresetName
+    ? `Pick inside the outlined ${activePresetName} boundary.`
+    : "Pick inside the outlined demo boundary.";
+  const isInsideDemoBoundary = useCallback(
+    (lng: number, lat: number) => !demoBbox || pointInBbox(lng, lat, demoBbox),
+    [demoBbox]
+  );
 
   // Auto-select AOI from map picks (smallest metro containing both points).
   useEffect(() => {
@@ -294,6 +311,12 @@ export default function App() {
 
   const onPickPoint = useCallback(
     (kind: "origin" | "destination", lng: number, lat: number) => {
+      if (!isInsideDemoBoundary(lng, lat)) {
+        setShadeCacheNote(null);
+        setError(demoBoundaryError);
+        return;
+      }
+
       const shouldRefreshRoutes =
         hasRoutesRef.current && (kind === "origin" ? Boolean(destination) : Boolean(origin));
       setRoutes([]);
@@ -310,7 +333,7 @@ export default function App() {
       }
       if (shouldRefreshRoutes) setRouteRefreshToken((token) => token + 1);
     },
-    [destination, origin]
+    [demoBoundaryError, destination, isInsideDemoBoundary, origin]
   );
 
   const selectSearchPlace = useCallback((kind: "origin" | "destination", place: PlaceSearchResult) => {
@@ -318,6 +341,11 @@ export default function App() {
     const lat = Number(place.lat);
     if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
       setError("Selected place has invalid coordinates");
+      return;
+    }
+    if (!isInsideDemoBoundary(lng, lat)) {
+      setShadeCacheNote(null);
+      setError(demoBoundaryError);
       return;
     }
 
@@ -337,12 +365,20 @@ export default function App() {
       setDestinationSnapped(null);
     }
     if (shouldRefreshRoutes) setRouteRefreshToken((token) => token + 1);
-  }, [destination, origin]);
+  }, [demoBoundaryError, destination, isInsideDemoBoundary, origin]);
 
   const findRoutes = useCallback(
     async (opts?: { silent?: boolean }) => {
       if (!origin || !destination) {
         if (!opts?.silent) setError("Set origin and destination with search or the map");
+        return;
+      }
+
+      if (
+        !isInsideDemoBoundary(origin[0], origin[1]) ||
+        !isInsideDemoBoundary(destination[0], destination[1])
+      ) {
+        if (!opts?.silent) setError(demoBoundaryError);
         return;
       }
 
@@ -421,7 +457,9 @@ export default function App() {
       bootstrapped,
       aoiId,
       activePresetName,
+      demoBoundaryError,
       datetimeIso,
+      isInsideDemoBoundary,
       alpha,
       region?.presets,
     ]
@@ -514,7 +552,7 @@ export default function App() {
               query={originSearch}
               onQueryChange={setOriginSearch}
               onSelect={(place) => selectSearchPlace("origin", place)}
-              bbox={region?.bbox}
+              bbox={demoBbox}
               placeholder="Search origin"
               tone="origin"
             />
@@ -523,7 +561,7 @@ export default function App() {
               query={destinationSearch}
               onQueryChange={setDestinationSearch}
               onSelect={(place) => selectSearchPlace("destination", place)}
-              bbox={region?.bbox}
+              bbox={demoBbox}
               placeholder="Search destination"
               tone="destination"
             />
@@ -551,8 +589,7 @@ export default function App() {
             </button>
           </div>
           <p className="pick-hint" style={{ marginTop: "0.35rem" }}>
-            Select Origin or Destination, then click the map. The nearest metro graph is chosen
-            automatically.
+            Select Origin or Destination, then click inside the outlined demo boundary.
           </p>
         </div>
 
@@ -632,7 +669,7 @@ export default function App() {
           datetime={datetimeIso}
           center={mapCenter}
           zoom={mapZoom}
-          stateBbox={region?.bbox}
+          stateBbox={stateBoundaryBbox}
           metroBbox={metroBbox}
         />
       </main>
