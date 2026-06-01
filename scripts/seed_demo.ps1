@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 # Bootstrap one AOI and seed shade cache (legacy helper).
 # Usage: .\scripts\seed_demo.ps1
 #        .\scripts\seed_demo.ps1 -Preset az-phoenix-core

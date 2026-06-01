@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 """Precompute edge shade fractions via shade-worker and SQLite cache."""
 
 from __future__ import annotations

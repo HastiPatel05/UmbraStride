@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { sampleEdge, aggregateShadeFraction, sampleCountForLength } from "./sampling.js";

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 /**
  * Geometric building shadow projection on flat ground (no ShadeMap).
  *

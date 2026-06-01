@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 """CPU parallelism helpers — default to all available cores."""
 
 from __future__ import annotations

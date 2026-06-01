@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 /**
  * Quick sanity check for wall-quad shadow union (run: npx tsx scripts/verify-shadows.ts)
  */

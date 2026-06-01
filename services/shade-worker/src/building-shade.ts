@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 import SunCalc from "suncalc";
 import type { LngLat, ShadeProfilePoint } from "@umbrastride/shared-types";
 import { fetchBuildingsInBbox, type BuildingFootprint } from "./buildings.js";

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 export type LngLat = { lng: number; lat: number };
 
 export type RouteRequest = {

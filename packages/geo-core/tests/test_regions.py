@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 from umbrastride_geo.regions import (
     estimate_tile_count,
     load_region,

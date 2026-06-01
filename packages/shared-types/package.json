@@ -2,6 +2,8 @@
   "name": "@umbrastride/shared-types",
   "version": "0.1.0",
   "private": true,
+  "author": "Tanmay Godse and Hasti Pareshbhai Patel",
+  "license": "CC-BY-NC-4.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

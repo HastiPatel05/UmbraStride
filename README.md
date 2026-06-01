@@ -1,5 +1,7 @@
 # UmbraStride
 
+Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
+
 **Walk in more shade when you want to** — shadow-oriented pedestrian routing for Arizona, inspired by [*Walking in the Shade*](https://doi.org/10.1145/3678717.3691287) (Feng et al., SIGSPATIAL 2024).
 
 UmbraStride builds walkable street networks from [OpenStreetMap](https://www.openstreetmap.org/), estimates how shady each street is at a chosen time, and finds routes that balance **staying cool (shadier)** vs **walking less (shorter)**. You use a map in the browser: click start and end, move a slider, get up to three colored paths.
@@ -280,7 +282,10 @@ See [docs/configuration.md](docs/configuration.md).
 
 ## License and attribution
 
-- **Code:** MIT — [LICENSE](LICENSE)
+- **Code and documentation:** [CC BY-NC 4.0](LICENSE) — non-commercial use only.
+- **Copyright:** Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
+- **Commercial use:** Not permitted without prior written permission from the copyright holders.
+- **Note:** CC BY-NC 4.0 is a valid copyright license, but it is not an OSI-approved open-source license because it restricts commercial use.
 - **Research:** Yu Feng et al., SIGSPATIAL 2024 — [doi.org/10.1145/3678717.3691287](https://doi.org/10.1145/3678717.3691287)
 - **Shadows:** SunCalc + OSM/OpenFreeMap building footprints
 - **Streets:** [OpenStreetMap](https://www.openstreetmap.org/) via [OSMnx](https://osmnx.readthedocs.io/)

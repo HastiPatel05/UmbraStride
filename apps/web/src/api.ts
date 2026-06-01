@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 export type LngLat = { lng: number; lat: number };

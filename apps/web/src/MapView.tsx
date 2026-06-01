@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import type { RouteResult, SnappedPoint } from "./api";

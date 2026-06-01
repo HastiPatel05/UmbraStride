@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 from datetime import datetime, timezone
 
 from umbrastride_routing.shade_store import ShadeStore, floor_ts_bucket

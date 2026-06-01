@@ -2,6 +2,11 @@
 name = "umbrastride-routing-core"
 version = "0.1.0"
 description = "Alpha-weighted shade routing for UmbraStride"
+authors = [
+    { name = "Tanmay Godse" },
+    { name = "Hasti Pareshbhai Patel" },
+]
+license = { text = "CC BY-NC 4.0" }
 requires-python = ">=3.11"
 dependencies = [
     "networkx>=3.2",

@@ -23,7 +23,7 @@ On hot sunny days, the **shortest walk** may expose you to more sun. The paper b
 | 3D scene verification | MapLibre 2D/2.5D map + optional live shadow layer |
 | Single study area workflow | **Metro presets** + optional statewide grid tiles |
 
-UmbraStride is **not** a reproduction of the Munich pipeline. It is a **practical open-source stack** with similar routing mathematics and a different data pipeline.
+UmbraStride is **not** a reproduction of the Munich pipeline. It is a **practical non-commercial implementation** with similar routing mathematics and a different data pipeline.
 
 ---
 
@@ -96,4 +96,4 @@ For scientific comparison with the paper, treat **building-aware precomputed cac
 
 ## Citing UmbraStride
 
-If you use this software in academic work, cite the **original paper** for the shadow-routing concept and describe UmbraStride as an open implementation with OSM building footprints and local solar geometry. Check the repo LICENSE (MIT) for code attribution.
+If you use this software in academic work, cite the **original paper** for the shadow-routing concept and describe UmbraStride as an implementation with OSM building footprints and local solar geometry. Check the repo [LICENSE](../LICENSE) for non-commercial use terms and attribution requirements.

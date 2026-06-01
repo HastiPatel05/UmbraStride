@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Tanmay Godse and Hasti Pareshbhai Patel. All Rights Reserved.
 import type { ArizonaPreset, ArizonaRegion } from "./api";
 
 export function pointInBbox(lng: number, lat: number, bbox: number[]): boolean {
