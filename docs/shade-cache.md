@@ -66,7 +66,10 @@ If automatic shade is disabled or a bucket cannot be generated, the router can f
 **Fix:** Seed the hours you test:
 
 ```bash
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date 2026-05-22
+# 5 AM-7 PM UTC
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 --date 2026-05-22
+# 5 AM-7 PM Phoenix local (MST / UTC-7)
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2 --date 2026-05-22
 ```
 
 ### SQLite concurrency
@@ -88,19 +91,22 @@ This prevents most `database is locked` failures when `/v1/route` and `/v1/aoi/{
 `scripts/seed_demo_cache.py` — fake shade from time + street bearing vs sun.
 
 ```bash
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14
+# 5 AM-7 PM UTC
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
+# 5 AM-7 PM Phoenix local (MST / UTC-7)
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ```
 
 **Night hours** (optional — same script; uses **astral** for sun position; uniform full shade when sun is below horizon):
 
 ```bash
-git pull origin tanmay
+git pull origin main
 source .venv/bin/activate
 pip install -e packages/geo-core   # pulls in astral
 python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5
 ```
 
-See [Setup — Night shade buckets](setup.md#night-shade-buckets-after-pulling-tanmay).
+See [Setup — Night shade buckets](setup.md#night-shade-buckets).
 
 Parallel: `SHADE_SEED_WORKERS=0` uses all cores.
 
@@ -113,7 +119,7 @@ Parallel: `SHADE_SEED_WORKERS=0` uses all cores.
 
 ```bash
 npm run dev:worker
-python scripts/precompute_shade.py --aoi az-phoenix --hours 10,11,12,13,14
+python scripts/precompute_shade.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ```
 
 ---
@@ -192,14 +198,14 @@ Each request: paths for **α ∈ {1.0, 0.0, your α}** in parallel when `ROUTING
 
 ### Warm before demo
 
-**Automatic:** `ROUTING_WARM_ON_STARTUP=1` + `ROUTING_WARM_HOURS=10,11,12,13,14`
+**Automatic:** `ROUTING_WARM_ON_STARTUP=1` + `ROUTING_WARM_HOURS=12,13,14,15,16,17,18,19,20,21,22,23,0,1,2` for 5 AM-7 PM Phoenix local, or `5,6,7,8,9,10,11,12,13,14,15,16,17,18,19` for UTC.
 
 **Manual:**
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
   -H "Content-Type: application/json" \
-  -d '{"hours": [10, 11, 12, 13, 14]}'
+  -d '{"hours": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2]}'
 ```
 
 See [Routing performance](performance.md) for full steps.
@@ -252,7 +258,7 @@ Up to 200 sample points. Set `"persist_sample": true` to write those edges into 
 POST /v1/aoi/az-phoenix/routing/warm
 Content-Type: application/json
 
-{"hours": [10, 11, 12, 13, 14], "alphas": [1.0, 0.0, 0.5]}
+{"hours": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2], "alphas": [1.0, 0.0, 0.5]}
 ```
 
 Does **not** fetch ShadeMap — only loads/builds routing artifacts.

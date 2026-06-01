@@ -51,7 +51,7 @@ Set `SHADE_PROFILE_MODE=building-aware` if you want worker precompute to use OSM
 ```bash
 git clone https://github.com/HastiPatel05/UmbraStride.git
 cd UmbraStride
-git checkout tanmay   # or your branch
+git checkout main
 git pull
 ```
 
@@ -60,7 +60,7 @@ git pull
 ```powershell
 git clone https://github.com/HastiPatel05/UmbraStride.git
 cd UmbraStride
-git checkout tanmay
+git checkout main
 git pull
 ```
 
@@ -99,7 +99,8 @@ SNAP_MAX_DIST_M=1200
 # Performance (included in .env.example — recommended)
 ROUTING_DISK_CACHE=1
 ROUTING_WARM_ON_STARTUP=1
-ROUTING_WARM_HOURS=10,11,12,13,14
+# Phoenix local 5 AM-7 PM, expressed as UTC buckets
+ROUTING_WARM_HOURS=12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ROUTING_PATH_ENGINE=rustworkx
 ROUTING_USE_ASTAR=1
 ```
@@ -169,10 +170,15 @@ Covers Phoenix, Tempe, Scottsdale. Matches app default `az-phoenix`.
 ```bash
 source .venv/bin/activate   # if not already
 python scripts/bootstrap_arizona.py --preset az-phoenix
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14 --date 2026-05-22
+# 5 AM-7 PM UTC
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 --date 2026-05-22
+# 5 AM-7 PM Phoenix local (MST / UTC-7)
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2 --date 2026-05-22
 ```
 
 **Windows:** same commands with venv activated.
+
+`--hours` is always UTC. For a pinned Phoenix-local date, seed `12..23` on the local date and `0..2` on the next UTC date if you need exact date alignment.
 
 **Creates:**
 
@@ -190,7 +196,7 @@ Bootstrap may take **several minutes** and hundreds of MB.
 
 ```bash
 python scripts/bootstrap_arizona.py --preset az-phoenix-core
-python scripts/seed_demo_cache.py --aoi az-phoenix-core --hours 10,11,12,13,14
+python scripts/seed_demo_cache.py --aoi az-phoenix-core --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ```
 
 Set `DEFAULT_AOI_ID=az-phoenix-core` and `VITE_DEFAULT_AOI=az-phoenix-core` if you use this as default.
@@ -208,17 +214,17 @@ ls data/shade-cache/az-phoenix.sqlite
 ```bash
 python scripts/bootstrap_arizona.py --list-presets
 python scripts/bootstrap_arizona.py --preset az-tucson
-python scripts/seed_demo_cache.py --aoi az-tucson --hours 10,11,12,13,14
+python scripts/seed_demo_cache.py --aoi az-tucson --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ```
 
 Details: [Arizona coverage](arizona.md).
 
-### Night shade buckets (after pulling `tanmay`)
+### Night shade buckets
 
 If you already have Phoenix streets and day shade, pull the latest code, ensure **astral** is installed (used for sun-below-horizon in the seed script), then add **night hours** to the same SQLite file:
 
 ```bash
-git pull origin tanmay
+git pull origin main
 source .venv/bin/activate
 pip install -e packages/geo-core   # pulls in astral
 python scripts/seed_demo_cache.py --aoi az-phoenix --hours 20,21,22,23,0,1,2,3,4,5
@@ -280,8 +286,10 @@ After API is up, optionally warm explicit hours:
 ```bash
 curl -s -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
   -H "Content-Type: application/json" \
-  -d '{"hours": [10, 11, 12, 13, 14]}' | python3 -m json.tool
+  -d '{"hours": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2]}' | python3 -m json.tool
 ```
+
+For 5 AM-7 PM UTC instead, use `[5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]`.
 
 Verify routing cache files:
 
@@ -318,7 +326,7 @@ Walkthrough: [User guide](user-guide.md).
 ```bash
 # Terminals: API + worker running
 source .venv/bin/activate
-python scripts/precompute_shade.py --aoi az-phoenix --hours 10,11,12,13,14
+python scripts/precompute_shade.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ```
 
 Set `SHADE_PROFILE_MODE=building-aware` in `.env` for Overpass + SunCalc precompute. See [Shade cache](shade-cache.md).
@@ -365,8 +373,9 @@ Use this to confirm a working install:
 | Command | Purpose |
 |---------|---------|
 | `python scripts/bootstrap_arizona.py --preset az-phoenix` | Download streets |
-| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14` | Synthetic shade (day) |
-| [Night shade update](setup.md#night-shade-buckets-after-pulling-tanmay) | `git pull origin tanmay` + `pip install -e packages/geo-core` + night seed |
+| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19` | Synthetic shade, 5 AM-7 PM UTC |
+| `python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2` | Synthetic shade, 5 AM-7 PM Phoenix local |
+| [Night shade update](setup.md#night-shade-buckets) | `git pull origin main` + `pip install -e packages/geo-core` + night seed |
 | `curl -X POST .../routing/warm` | Preload routing cache |
 | `docker compose up` | API + worker + web on :8080 — [Docker](docker.md) |
 | `python scripts/bootstrap_arizona.py --list-presets` | List metros |

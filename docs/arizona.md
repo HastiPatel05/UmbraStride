@@ -72,7 +72,7 @@ The API uses the same logic when you call `POST /v1/route` without `aoi_id`.
 
 ```bash
 python scripts/bootstrap_arizona.py --tile az-tile--112.00_33.25
-python scripts/seed_demo_cache.py --aoi az-tile--112.00_33.25 --hours 10,11,12,13,14
+python scripts/seed_demo_cache.py --aoi az-tile--112.00_33.25 --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ```
 
 Routes across multiple tiles are not supported as one route yet.
@@ -104,7 +104,10 @@ Creates:
 ### Step 2 — Seed shade (routing quality)
 
 ```bash
-python scripts/seed_demo_cache.py --aoi az-phoenix --hours 10,11,12,13,14
+# 5 AM-7 PM UTC
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
+# 5 AM-7 PM Phoenix local (MST / UTC-7)
+python scripts/seed_demo_cache.py --aoi az-phoenix --hours 12,13,14,15,16,17,18,19,20,21,22,23,0,1,2
 ```
 
 Creates `data/shade-cache/az-phoenix.sqlite`.
@@ -116,7 +119,7 @@ After API is running:
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/aoi/az-phoenix/routing/warm \
   -H "Content-Type: application/json" \
-  -d '{"hours": [10, 11, 12, 13, 14]}'
+  -d '{"hours": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2]}'
 ```
 
 Or set `ROUTING_WARM_ON_STARTUP=1` in `.env` so the API warms on boot.  
