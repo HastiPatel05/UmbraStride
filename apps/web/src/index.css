@@ -315,9 +315,20 @@ input[type="range"] {
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
   font-size: 0.75rem;
-  z-index: 2;
+  z-index: 3;
   pointer-events: none;
   user-select: none;
+}
+
+.demo-bbox-screen-overlay {
+  position: absolute;
+  border: 3px dashed #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(15, 20, 25, 0.7),
+    0 0 22px rgba(251, 191, 36, 0.2);
+  z-index: 2;
+  pointer-events: none;
 }
 
 .map-hud {

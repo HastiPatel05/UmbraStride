@@ -181,6 +181,13 @@ type Props = {
   metroBbox?: number[];
 };
 
+type BboxOverlay = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
 export default function MapView({
   routes,
   origin,
@@ -205,6 +212,7 @@ export default function MapView({
   metroBboxRef.current = metroBbox;
 
   const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
+  const [bboxOverlay, setBboxOverlay] = useState<BboxOverlay | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -273,6 +281,44 @@ export default function MapView({
     map.setMaxBounds(expandedBbox(metroBbox));
     map.fitBounds(bboxBounds(metroBbox), { padding: 72, maxZoom: 14.5, duration: 800 });
   }, [metroBbox]);
+
+  useEffect(() => {
+    const map = mapInstance;
+    if (!map || !metroBbox) {
+      setBboxOverlay(null);
+      return;
+    }
+
+    const updateOverlay = () => {
+      const [west, south, east, north] = metroBbox;
+      const corners = [
+        map.project([west, south]),
+        map.project([east, south]),
+        map.project([east, north]),
+        map.project([west, north]),
+      ];
+      const xs = corners.map((point) => point.x);
+      const ys = corners.map((point) => point.y);
+      const left = Math.min(...xs);
+      const right = Math.max(...xs);
+      const top = Math.min(...ys);
+      const bottom = Math.max(...ys);
+      setBboxOverlay({
+        left,
+        top,
+        width: Math.max(0, right - left),
+        height: Math.max(0, bottom - top),
+      });
+    };
+
+    updateOverlay();
+    map.on("move", updateOverlay);
+    map.on("resize", updateOverlay);
+    return () => {
+      map.off("move", updateOverlay);
+      map.off("resize", updateOverlay);
+    };
+  }, [mapInstance, metroBbox]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -636,6 +682,18 @@ export default function MapView({
     <div className="map-wrap" style={{ height: "100%" }}>
       <div ref={containerRef} id="map" />
       <ShadeOverlay map={mapInstance} datetime={datetime} />
+      {bboxOverlay && (
+        <div
+          className="demo-bbox-screen-overlay"
+          aria-hidden="true"
+          style={{
+            left: bboxOverlay.left,
+            top: bboxOverlay.top,
+            width: bboxOverlay.width,
+            height: bboxOverlay.height,
+          }}
+        />
+      )}
       <div className="map-overlay map-hud" aria-hidden="true">
         <span className={pickMode === "origin" ? "pick-mode-active" : "pick-hint"}>
           ● Green dot = origin
