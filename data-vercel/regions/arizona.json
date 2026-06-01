@@ -1,0 +1,31 @@
+{
+  "region_id": "arizona",
+  "name": "Phoenix, Arizona Vercel demo",
+  "bbox": [
+    -112.09,
+    33.465,
+    -112.045,
+    33.505
+  ],
+  "default_aoi": "az-phoenix-vercel",
+  "default_center": [
+    -112.0675,
+    33.485
+  ],
+  "default_zoom": 16,
+  "presets": [
+    {
+      "aoi_id": "az-phoenix-vercel",
+      "name": "Phoenix Vercel demo",
+      "bbox": [
+        -112.09,
+        33.465,
+        -112.045,
+        33.505
+      ],
+      "description": "Small downtown Phoenix AOI packaged for Vercel Hobby serverless routing"
+    }
+  ],
+  "tiles": [],
+  "tile_count": 0
+}

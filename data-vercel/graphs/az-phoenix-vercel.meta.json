@@ -1,0 +1,16 @@
+{
+  "aoi_id": "az-phoenix-vercel",
+  "bbox": [
+    -112.09,
+    33.465,
+    -112.045,
+    33.505
+  ],
+  "nodes": 12566,
+  "edges": 39204,
+  "network_type": "walk",
+  "source_aoi": "az-phoenix",
+  "created_at": "2026-06-01T02:03:52.965018+00:00",
+  "region": "arizona",
+  "deployment": "vercel-hobby"
+}

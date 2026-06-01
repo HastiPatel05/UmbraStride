@@ -28,6 +28,10 @@ data/routing-cache/
 *.sqlite
 *.db
 
+# Vercel demo runtime data is intentionally small and committed.
+!data-vercel/
+!data-vercel/**
+
 # IDE
 .cursor/
 .idea/

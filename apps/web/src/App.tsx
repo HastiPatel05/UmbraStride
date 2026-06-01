@@ -12,7 +12,7 @@ import {
 } from "./api";
 import { resolveAoiForRoute, resolvePresetForPoint } from "./resolveAoi";
 
-const DEFAULT_AOI = import.meta.env.VITE_DEFAULT_AOI || "az-phoenix";
+const DEFAULT_AOI = import.meta.env.VITE_DEFAULT_AOI || "az-phoenix-vercel";
 const PHOENIX_CENTER: [number, number] = [-112.07, 33.48];
 const PHOENIX_ZOOM = 16;
 const SHADE_AUTO_SYNC_MS = 10 * 60 * 1000;
