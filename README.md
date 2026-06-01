@@ -13,7 +13,7 @@ UmbraStride builds walkable street networks from [OpenStreetMap](https://www.ope
 | Resource | Link |
 |----------|------|
 | Video demo with PPT explanation | [Watch on YouTube](https://youtu.be/E0k0IXz6TCo?si=J0RsWQPBQBA5q7BT) |
-| PPT deck | Coming soon |
+| PPT deck | Coming soon | [UmbraStride Presentation](https://docs.google.com/presentation/d/1k6RAfdoX4uRiwi-zb014rQaWBQiXYnKX/edit?slide=id.p2#slide=id.p2)
 | Live Vercel deployment | [https://umbrastride.vercel.app/](https://umbrastride.vercel.app/) |
 
 ## Screenshots
