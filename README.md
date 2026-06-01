@@ -30,6 +30,12 @@ The Vercel demo constrains clicks to the highlighted Phoenix demo area. The gree
 
 The 3D view displays OpenStreetMap/OpenMapTiles buildings with client-side geometric shadows computed from the selected local time. Moving the time controls changes the sun position and shadow length, making it easier to see why morning and evening walks can have stronger shade differences than midday walks.
 
+### Route Comparison
+
+![UmbraStride route comparison](docs/assets/screenshots/vercel-demo-routes.png)
+
+After the user selects an origin and destination, UmbraStride compares three walking options on the same map. Orange shows the shortest route, teal shows the coolest route with more shade, and purple shows the route selected by the shade-versus-shortness slider. The sidebar reports each route's distance, estimated shade percentage, and detour so users can see the tradeoff before choosing a path.
+
 ---
 
 ## Who is this for?
