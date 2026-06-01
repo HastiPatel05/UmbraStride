@@ -16,6 +16,7 @@ Welcome. This folder explains **what UmbraStride is**, **how to install and run 
 | **Change settings** (.env files) | [Configuration](configuration.md) |
 | **Call the HTTP API** | [API reference](api.md) |
 | **Run with Docker** | [Docker guide](docker.md) |
+| **Deploy the bounded Vercel demo** | [Vercel Hobby demo](vercel-hobby.md) |
 | **Learn how the code is organized** | [Architecture](architecture.md) |
 | **Work with Arizona / Phoenix data** | [Arizona coverage](arizona.md) |
 | **Understand shade storage** | [Shade cache](shade-cache.md) |
@@ -26,6 +27,8 @@ Welcome. This folder explains **what UmbraStride is**, **how to install and run 
 ## What is UmbraStride? (30 seconds)
 
 UmbraStride plans **walking routes that balance shade and distance**. Set **start** and **end** on a map, pick **date and time**, and adjust a slider between **shade** and **shortest walk**.
+
+On the `vercel-deploy` branch, the live Vercel Hobby deployment is deliberately limited to one small Phoenix bbox (`az-phoenix-vercel`) because the full Arizona data and worker stack require persistent storage and more compute. See [Vercel Hobby demo](vercel-hobby.md). For full Phoenix, statewide Arizona tiles, and Docker deployment, use the `main` branch docs: [Setup](setup.md), [Arizona coverage](arizona.md), and [Docker](docker.md).
 
 The app shows up to **three routes**:
 

@@ -6,6 +6,30 @@ UmbraStride builds walkable street networks from [OpenStreetMap](https://www.ope
 
 ---
 
+## Vercel Hobby demo branch
+
+This branch, `vercel-deploy`, is intentionally **not the full Arizona deployment**.
+It exists so the project can run on **Vercel Hobby** as a small, live demo:
+
+- **Frontend:** Vite app served by Vercel.
+- **API:** Minimal same-origin FastAPI function in [`api/index.py`](api/index.py), exposed under `/api`.
+- **Runtime data:** Compact [`data-vercel/`](data-vercel/) artifacts only.
+- **Demo AOI:** `az-phoenix-vercel`.
+- **Bounding box:** `[-112.09, 33.465, -112.045, 33.505]`.
+
+The map shows this demo area with an outlined box and blocks clicks outside it. The API also rejects route requests whose origin or destination falls outside that box. This is deliberate: Vercel Hobby is serverless and has fixed limits on bundle size, memory, duration, response payloads, and writable filesystem behavior. The full UmbraStride stack needs long-running services, precomputed graph/shade/routing data, and a persistent `data/` volume; that belongs on the normal deployment path, not this branch.
+
+For full Phoenix, statewide Arizona tiles, Docker Compose, shade-worker, bootstrap jobs, and persistent cache deployment, use the **`main` branch** and the full docs:
+
+- [docs/setup.md](docs/setup.md)
+- [docs/arizona.md](docs/arizona.md)
+- [docs/docker.md](docs/docker.md)
+- [docs/performance.md](docs/performance.md)
+
+Do not remove the bbox guard from this branch unless the Vercel runtime data is also expanded and the deployment target can handle the extra compute and storage.
+
+---
+
 ## Who is this for?
 
 | You are… | Start here |
@@ -223,6 +247,7 @@ Invoke-RestMethod -Method Post `
 | [docs/glossary.md](docs/glossary.md) | Terms (AOI, alpha, …) |
 | [docs/configuration.md](docs/configuration.md) | All `.env` variables |
 | [docs/arizona.md](docs/arizona.md) | Metro presets and statewide tiles |
+| [docs/vercel-hobby.md](docs/vercel-hobby.md) | Bounded Vercel Hobby demo branch |
 | [docs/shade-cache.md](docs/shade-cache.md) | Shade storage |
 | [docs/api.md](docs/api.md) | HTTP API reference |
 | [docs/architecture.md](docs/architecture.md) | System design |
