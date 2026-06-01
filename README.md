@@ -8,6 +8,30 @@ UmbraStride builds walkable street networks from [OpenStreetMap](https://www.ope
 
 ---
 
+## Demo
+
+| Resource | Link |
+|----------|------|
+| Video demo with PPT explanation | [Watch on YouTube](https://youtu.be/E0k0IXz6TCo?si=J0RsWQPBQBA5q7BT) |
+| PPT deck | Coming soon |
+| Live Vercel deployment | [https://umbrastride.vercel.app/](https://umbrastride.vercel.app/) |
+
+## Screenshots
+
+### Vercel Demo Boundary
+
+![UmbraStride Vercel demo boundary](docs/assets/screenshots/vercel-demo-boundary.png)
+
+The Vercel demo constrains clicks to the highlighted Phoenix demo area. The green marker is the origin, the red marker is the destination, and the sidebar lets users search locations, click points on the map, adjust local date/time, and choose the shade-versus-shortness preference before finding routes. When the sun is below the horizon, the app shows the night-shade state because every walkable segment is treated as fully shaded.
+
+### 3D Buildings And Live Shadows
+
+![UmbraStride 3D buildings and shadows](docs/assets/screenshots/vercel-demo-shadows.png)
+
+The 3D view displays OpenStreetMap/OpenMapTiles buildings with client-side geometric shadows computed from the selected local time. Moving the time controls changes the sun position and shadow length, making it easier to see why morning and evening walks can have stronger shade differences than midday walks.
+
+---
+
 ## Who is this for?
 
 | You are… | Start here |
